@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  @apply min-h-screen w-full transition-colors duration-300 font-sans bg-slate-100 text-slate-800 dark:bg-[#191b24] dark:text-slate-100;
+}
+
+::-webkit-scrollbar { @apply w-2 bg-transparent; }
+::-webkit-scrollbar-thumb { @apply rounded-md bg-slate-700/30 dark:bg-slate-900/30; }
+
+/* Sidebar */
+.sidebar {
+  @apply h-screen sticky top-0 dark:bg-slate-900 shadow-xl border-r border-slate-200 dark:border-slate-800 rounded-2xl p-4 pb-8 backdrop-blur-xl transition-colors duration-300;
+}
+
+/* Main content area */
+.main {
+  @apply min-h-screen px-6 py-8 bg-slate-50 dark:bg-slate-950 transition-colors duration-300;
+}
+
+.card, .table-card {
+  @apply rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-800/80 backdrop-blur-xl transition-colors duration-300;
+}
+
+.table-card {
+  @apply p-0; /* Cards with tables shouldn't double pad */
+}
+
+.table {
+  @apply min-w-full border-collapse table-auto rounded-2xl text-sm font-normal transition-colors duration-300;
+}
+
+.table thead {
+  @apply bg-white/80 dark:bg-slate-900/70 font-bold tracking-wider text-xs border-none;
+}
+
+.table th, .table td {
+  @apply px-4 py-3 align-middle border-b border-slate-200 dark:border-slate-700 transition-colors duration-300;
+}
+
+.table th {
+  @apply text-slate-700 dark:text-slate-300 bg-transparent;
+}
+
+.table tr:last-child td { @apply border-b-0; }
+
+.table tbody tr:hover {
+  @apply bg-violet-400/10 dark:bg-violet-500/10 transition;
+}
+
+/* Number display */
+.big-num {
+  @apply text-3xl md:text-5xl font-mono tracking-widest font-bold opacity-90;
+}
+
+/* Accent/Primary utility */
+.accent {
+  @apply text-violet-500 dark:text-violet-400 font-semibold;
+}
+
+.btn-primary {
+  @apply transition rounded-lg bg-violet-600 hover:bg-violet-500  px-4 py-2 font-semibold text-sm shadow-md;
+}
+.btn-danger {
+  @apply transition rounded-lg bg-red-600 hover:bg-red-500  px-4 py-2 font-semibold text-sm shadow-md;
+}
+.btn-secondary {
+  @apply transition rounded-lg bg-white/80 dark:bg-slate-800/70 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-4 py-2 font-semibold text-sm shadow;
+}
+
+.heading-lg {
+  @apply text-2xl md:text-3xl font-bold accent mb-2;
+}
+.subtext {
+  @apply text-xs text-slate-400 dark:text-slate-400;
+}
+
+hr {
+  @apply border-slate-200 dark:border-slate-700 my-6;
+}
+

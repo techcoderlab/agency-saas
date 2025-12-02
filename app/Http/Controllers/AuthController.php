@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+
+class AuthController extends Controller
+{
+    public function login(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        /** @var \App\Models\User|null $user */
+        $user = User::where('email', $validated['email'])->first();
+
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            return response()->json(['message' => 'Invalid credentials.'], 422);
+        }
+
+        $token = $user->createToken('api')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => $user->only(['id', 'name', 'email', 'role', 'tenant_id']),
+            'tenant' => $user->tenant,
+        ]);
+    }
+
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'tenant_name' => ['required', 'string', 'max:255'],
+            'tenant_domain' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $tenant = Tenant::create([
+            'name' => $validated['tenant_name'],
+            'domain' => $validated['tenant_domain'] ?? null,
+            'status' => 'active',
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => 'agency_owner',
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $token = $user->createToken('api')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => $user->only(['id', 'name', 'email', 'role', 'tenant_id']),
+            'tenant' => $tenant,
+        ], 201);
+    }
+
+    public function n8nToken(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $tokenName = $request->input('name', 'n8n-webhook');
+
+        $token = $user->createToken($tokenName, ['n8n:webhook'])->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+        ]);
+    }
+}
+
+

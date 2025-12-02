@@ -1,0 +1,76 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Form;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+
+class FormController extends Controller
+{
+    public function index(Request $request)
+    {
+        return Form::orderByDesc('created_at')->get();
+    }
+
+    public function store(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user || $user->isSuperAdmin()) {
+            return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'schema' => ['required', 'array'],
+            'n8n_webhook_url' => ['nullable', 'url', 'max:2048'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $form = Form::create([
+            'name' => $validated['name'],
+            'schema' => $validated['schema'],
+            'n8n_webhook_url' => $validated['n8n_webhook_url'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        return response()->json($form, Response::HTTP_CREATED);
+    }
+
+    public function update(Request $request, Form $form)
+    {
+        $user = $request->user();
+
+        if (! $user || $user->isSuperAdmin()) {
+            return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'schema' => ['sometimes', 'array'],
+            'n8n_webhook_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $form->fill($validated);
+        $form->save();
+
+        return response()->json($form);
+    }
+
+    public function destroy(Request $request, Form $form)
+    {
+        $user = $request->user();
+
+        if (! $user || $user->isSuperAdmin()) {
+            return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $form->delete();
+
+        return response()->json([], Response::HTTP_NO_CONTENT);
+    }
+}
+
+
