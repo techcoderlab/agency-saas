@@ -11,23 +11,53 @@ class LeadController extends Controller
 {
     public function index(Request $request)
     {
-
         $query = Lead::query();
 
-        if ($request->has('status') && $request->status !== 'all') {
+        // --- Standard Filters ---
+        if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('temperature') && $request->temperature !== 'all') {
+        if ($request->filled('temperature') && $request->temperature !== 'all') {
             $query->where('temperature', $request->temperature);
         }
 
-        return $query->with('form:id,name')->orderByDesc('created_at')->paginate(20);
+        if ($request->filled('source') && $request->source !== 'all') {
+            $query->where('source', $request->source);
+        }
+
+        // --- Date Range Filters ---
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // --- Advanced Smart Search ---
+        if ($request->filled('search')) {
+            $term = strtolower($request->search);
+            
+            $query->where(function($q) use ($term) {
+                $q->where('id', 'like', "%{$term}%")
+                  ->orWhereRaw('LOWER(source) LIKE ?', ["%{$term}%"])
+                  ->orWhereRaw('LOWER(notes) LIKE ?', ["%{$term}%"]);
+
+                // Search inside the JSON payload (Email, Name, Phone, etc.)
+                // Note: This syntax works for MySQL/MariaDB/SQLite. 
+                // For PostgreSQL use: orWhereRaw('LOWER(payload::text) LIKE ?', ...)
+                $q->orWhereRaw('LOWER(payload) LIKE ?', ["%{$term}%"]);
+            });
+        }
+
+        return $query->with('form:id,name')
+                     ->orderByDesc('created_at')
+                     ->paginate(20);
     }
 
     public function show(Lead $lead)
     {
-        // Ensure tenant access via Global Scope or Policy (assumed handled by middleware/trait)
         return $lead->load(['activities', 'form']);
     }
 
@@ -38,6 +68,13 @@ class LeadController extends Controller
             'temperature' => 'required|string',
             'notes' => 'nullable|string'
         ]);
+
+        // Fix for webhook looping:
+        // External systems updating the lead can pass 'suppress_webhooks=true'
+        // to avoid triggering the webhook they just reacted to.
+        if ($request->boolean('suppress_webhooks')) {
+            $lead->suppress_webhooks = true;
+        }
 
         $lead->update($validated);
 
@@ -53,41 +90,44 @@ class LeadController extends Controller
             'content' => $request->content
         ]);
 
+        // Optional: Trigger note event
+        // $this->triggerWebhooks($lead, 'lead.note_added'); 
+        // (Accessing the observer helper here is hard, better to let Observer handle LeadActivity creation if needed)
+
         return response()->json($activity);
     }
 
-    // Add this method to the class
     public function import(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',
-            'form_id' => 'nullable|exists:forms,id' // Optional: link imported leads to a form
+            'form_id' => 'nullable|exists:forms,id'
         ]);
 
         $file = $request->file('file');
         $handle = fopen($file->getPathname(), 'r');
-        $header = fgetcsv($handle); // Assume first row is header
+        $header = fgetcsv($handle);
         
         $importedCount = 0;
 
         DB::beginTransaction();
         try {
             while (($row = fgetcsv($handle)) !== false) {
+                // Check for empty rows
+                if (empty(array_filter($row))) continue;
+
+                // Ensure row matches header length
+                if (count($row) !== count($header)) continue;
+
                 $data = array_combine($header, $row);
                 
-                // Basic mapping logic (adjust keys based on your needs or make dynamic)
-                // We assume the CSV *might* have 'email', 'name', etc.
-                // We put EVERYTHING into payload/meta_data to be safe.
-                
                 Lead::create([
-                    // Use current user's tenant (scope handles this automatically usually, 
-                    // but explicit is safer if you use BelongsToTenant trait correctly)
                     'tenant_id' => $request->user()->tenant_id, 
                     'form_id' => $request->form_id ?? null,
                     'source' => 'csv',
                     'status' => 'new',
                     'temperature' => 'cold',
-                    'payload' => $data, // Store full CSV row in payload
+                    'payload' => $data,
                     'meta_data' => [
                         'import_file' => $file->getClientOriginalName(),
                         'imported_at' => now()->toIso8601String()
@@ -108,5 +148,3 @@ class LeadController extends Controller
         }
     }
 }
-
-

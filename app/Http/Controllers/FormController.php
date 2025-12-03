@@ -24,14 +24,16 @@ class FormController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'schema' => ['required', 'array'],
-            'n8n_webhook_url' => ['nullable', 'url', 'max:2048'],
+            'webhook_url' => ['nullable', 'url', 'max:2048'],
+            'webhook_secret' => ['nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
         $form = Form::create([
             'name' => $validated['name'],
             'schema' => $validated['schema'],
-            'n8n_webhook_url' => $validated['n8n_webhook_url'] ?? null,
+            'webhook_url' => $validated['webhook_url'] ?? null,
+            'webhook_secret' => $validated['webhook_secret'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
@@ -49,7 +51,8 @@ class FormController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'schema' => ['sometimes', 'array'],
-            'n8n_webhook_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'webhook_url' => ['sometimes','nullable', 'url', 'max:2048'],
+            'webhook_secret' => ['sometimes','nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 

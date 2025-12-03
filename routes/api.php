@@ -5,6 +5,7 @@ use App\Http\Controllers\FormController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TenantController;
+use App\Http\Controllers\WebhookController;
 use App\Http\Middleware\CheckTenantStatus;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,13 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::post('/forms', [FormController::class, 'store']);
     Route::put('/forms/{form}', [FormController::class, 'update']);
     Route::delete('/forms/{form}', [FormController::class, 'destroy']);
+
+    // Webhooks Management
+    Route::get('/webhooks', [WebhookController::class, 'index']);
+    Route::post('/webhooks', [WebhookController::class, 'store']);
+    Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
+
+
 
     // Agency leads listing (per-tenant via global scope)
     Route::get('/leads', [LeadController::class, 'index']);

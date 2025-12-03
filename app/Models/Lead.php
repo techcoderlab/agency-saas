@@ -13,6 +13,9 @@ class Lead extends Model
     use HasFactory;
     use BelongsToTenant;
 
+    // Temporary flag to prevent observer from firing webhooks during sync updates
+    public bool $suppress_webhooks = false;
+
     protected $fillable = [
         'tenant_id',
         'form_id',

@@ -118,9 +118,9 @@ onMounted(fetchForms)
               </td>
 
               <td class="px-6 py-4 align-top">
-                <div v-if="form.n8n_webhook_url" class="flex items-center gap-2 max-w-[200px]">
-                   <span class="truncate text-xs text-slate-600 dark:text-slate-400 font-mono" :title="form.n8n_webhook_url">{{ form.n8n_webhook_url }}</span>
-                   <CopyButton :text="form.n8n_webhook_url" title="Copy Webhook" />
+                <div v-if="form.webhook_url" class="flex items-center gap-2 max-w-[200px]">
+                   <span class="truncate text-xs text-slate-600 dark:text-slate-400 font-mono" :title="form.webhook_url">{{ form.webhook_url }}</span>
+                   <CopyButton :text="form.webhook_url" title="Copy Webhook" />
                 </div>
                 <span v-else class="text-xs text-slate-400 italic">Default</span>
               </td>
