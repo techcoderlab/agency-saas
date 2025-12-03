@@ -13,7 +13,12 @@ class PublicFormController extends Controller
     {
         $form = Form::where('id', $uuid)
             ->where('is_active', true)
-            ->firstOrFail();
+            ->first();
+
+        // Manual check prevents default Laravel 404 page, returns JSON instead
+        if (!$form) {
+            return response()->json(['message' => '404 Not Found'], 404);
+        }
 
         return response()->json([
             'id' => $form->id,
@@ -26,7 +31,11 @@ class PublicFormController extends Controller
     {
         $form = Form::where('id', $uuid)
             ->where('is_active', true)
-            ->firstOrFail();
+            ->first();
+
+        if (!$form) {
+             return response()->json(['message' => 'Form not active.'], 404);
+        }
 
         $payload = $request->all();
 
@@ -36,7 +45,9 @@ class PublicFormController extends Controller
             'payload' => $payload,
         ]);
 
-        SendToN8NJob::dispatch($lead)->onQueue('database');
+        // Dispatch to queue
+        // SendToN8NJob::dispatch($lead)->onQueue('database');
+        SendToN8NJob::dispatch($lead);
 
         return response()->json([
             'message' => 'Submitted successfully.',
@@ -44,5 +55,3 @@ class PublicFormController extends Controller
         ], 201);
     }
 }
-
-

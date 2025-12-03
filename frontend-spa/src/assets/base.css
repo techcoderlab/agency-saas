@@ -1,5 +1,14 @@
 /* color palette from <https://github.com/vuejs/theme> */
 :root {
+  /* --------------------------------------------------------- */
+  /* DYNAMIC THEME ENGINE (RGB Values for Tailwind Opacity)    */
+  /* Default Fallback: Neon Blue (#0096FF) & Slate 800         */
+  /* --------------------------------------------------------- */
+
+
+  /* --------------------------------------------------------- */
+  /* LEGACY VUE PALETTE (Kept for backwards compatibility)     */
+  /* --------------------------------------------------------- */
   --vt-c-white: #ffffff;
   --vt-c-white-soft: #f8f8f8;
   --vt-c-white-mute: #f2f2f2;
@@ -36,6 +45,9 @@
   --section-gap: 160px;
 }
 
+/* --------------------------------------------------------- */
+/* DARK MODE HANDLING (Supports both System & Class)         */
+/* --------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-background: var(--vt-c-black);
@@ -50,6 +62,22 @@
   }
 }
 
+/* Allow manual toggling via 'dark' class on HTML tag */
+.dark {
+  --color-background: var(--vt-c-black);
+  --color-background-soft: var(--vt-c-black-soft);
+  --color-background-mute: var(--vt-c-black-mute);
+
+  --color-border: var(--vt-c-divider-dark-2);
+  --color-border-hover: var(--vt-c-divider-dark-1);
+
+  --color-heading: var(--vt-c-text-dark-1);
+  --color-text: var(--vt-c-text-dark-2);
+}
+
+/* --------------------------------------------------------- */
+/* RESET & TYPOGRAPHY                                        */
+/* --------------------------------------------------------- */
 *,
 *::before,
 *::after {

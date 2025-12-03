@@ -3,18 +3,9 @@ import { computed } from 'vue'
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
 
 const props = defineProps({
-  schema: {
-    type: Array,
-    default: () => [],
-  },
-  modelValue: {
-    type: Object,
-    default: () => ({}),
-  },
-  errors: {
-    type: Object,
-    default: () => ({}),
-  },
+  schema: { type: Array, default: () => [] },
+  modelValue: { type: Object, default: () => ({}) },
+  errors: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -23,10 +14,7 @@ const valueFor = (field) =>
   computed(() => props.modelValue[field.name] ?? (field.type === 'checkbox-group' || field.multiple ? [] : ''))
 
 const updateField = (name, value) => {
-  emit('update:modelValue', {
-    ...props.modelValue,
-    [name]: value,
-  })
+  emit('update:modelValue', { ...props.modelValue, [name]: value })
 }
 
 const handleCheckboxGroup = (field, optionValue, checked) => {
@@ -39,263 +27,104 @@ const handleCheckboxGroup = (field, optionValue, checked) => {
   }
   updateField(field.name, current)
 }
-
-const fileSummary = (files) => {
-  if (!files || !files.length) return ''
-  return Array.from(files).map((f) => f.name).join(', ')
-}
 </script>
 
 <template>
-  <form class="space-y-4">
-    <div
-      v-for="(field, index) in schema"
-      :key="field.name || index"
-      class="space-y-1"
-    >
+  <form class="space-y-6" @submit.prevent>
+    <div v-for="(field, index) in schema" :key="field.name || index" class="space-y-1.5">
+      
       <div class="flex items-center justify-between">
-        <label class="block text-sm font-medium text-slate-200">
+        <label class="block text-sm font-semibold text-slate-700">
           {{ field.label || field.name }}
-          <span
-            v-if="field.required"
-            class="text-red-500"
-          >
-            *
-          </span>
+          <span v-if="field.required" class="text-red-500">*</span>
         </label>
-        <span
-          v-if="field.hint"
-          class="text-xs text-slate-400"
-        >
-          {{ field.hint }}
-        </span>
+        <span v-if="field.hint" class="text-xs text-slate-400 italic">{{ field.hint }}</span>
       </div>
 
-      <!-- Text / Email / Number -->
-      <input
-        v-if="['text', 'email', 'number'].includes(field.type)"
-        :type="field.type"
-        :name="field.name"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        :placeholder="field.placeholder"
-        :required="field.required"
-        :value="valueFor(field).value"
-        @input="updateField(field.name, $event.target.value)"
-      />
-
-      <!-- Textarea -->
-      <textarea
-        v-else-if="field.type === 'textarea'"
-        :name="field.name"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        :placeholder="field.placeholder"
-        :required="field.required"
-        :value="valueFor(field).value"
-        @input="updateField(field.name, $event.target.value)"
-      />
-
-      <!-- Select (Headless UI Listbox single) -->
-      <Listbox
-        v-else-if="field.type === 'select' && !field.multiple"
-        :model-value="valueFor(field).value || ''"
-        @update:model-value="(val) => updateField(field.name, val)"
-      >
-        <div class="relative mt-1">
-          <ListboxButton
-            class="relative w-full cursor-default rounded-lg bg-slate-900/60 py-2 pl-3 pr-10 text-left text-sm text-slate-100 shadow-md border border-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-          >
-            <span class="block truncate">
-              {{
-                (field.options || []).find((o) => o.value === valueFor(field).value)?.label ||
-                  field.placeholder ||
-                  'Select...'
-              }}
-            </span>
-          </ListboxButton>
-          <ListboxOptions
-            class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-900 py-1 text-sm shadow-lg ring-1 ring-black/5 focus:outline-none z-20"
-          >
-            <ListboxOption
-              v-for="option in field.options || []"
-              :key="option.value"
-              v-slot="{ active, selected }"
-              :value="option.value"
-              as="template"
-            >
-              <li
-                class="relative cursor-default select-none py-2 pl-3 pr-9"
-                :class="[
-                  active ? 'bg-violet-600 ' : 'text-slate-100',
-                  selected ? 'font-medium' : 'font-normal',
-                ]"
-              >
-                <span class="block truncate">
-                  {{ option.label }}
-                </span>
-              </li>
-            </ListboxOption>
-          </ListboxOptions>
-        </div>
-      </Listbox>
-
-      <!-- Native multi-select -->
-      <select
-        v-else-if="field.type === 'select' && field.multiple"
-        :name="field.name"
-        multiple
-        class="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        :required="field.required"
-        :value="valueFor(field).value"
-        @change="
-          updateField(
-            field.name,
-            Array.from($event.target.selectedOptions || []).map((o) => o.value),
-          )
-        "
-      >
-        <option
-          v-for="option in field.options || []"
-          :key="option.value"
-          :value="option.value"
-        >
-          {{ option.label }}
-        </option>
-      </select>
-
-      <!-- Radio group -->
-      <div
-        v-else-if="field.type === 'radio-group'"
-        class="flex flex-wrap gap-3"
-      >
-        <label
-          v-for="option in field.options || []"
-          :key="option.value"
-          class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-100 cursor-pointer hover:border-violet-500"
-        >
-          <input
-            type="radio"
-            :name="field.name"
-            class="text-violet-500 focus:ring-violet-500"
-            :value="option.value"
-            :checked="valueFor(field).value === option.value"
-            @change="updateField(field.name, option.value)"
-          />
-          <span>{{ option.label }}</span>
-        </label>
-      </div>
-
-      <!-- Checkbox group -->
-      <div
-        v-else-if="field.type === 'checkbox-group'"
-        class="flex flex-col gap-2"
-      >
-        <label
-          v-for="option in field.options || []"
-          :key="option.value"
-          class="inline-flex items-center gap-2 text-sm text-slate-100 cursor-pointer"
-        >
-          <input
-            type="checkbox"
-            class="rounded border-slate-600 bg-slate-900 text-violet-500 focus:ring-violet-500"
-            :value="option.value"
-            :checked="(valueFor(field).value || []).includes(option.value)"
-            @change="handleCheckboxGroup(field, option.value, $event.target.checked)"
-          />
-          <span>{{ option.label }}</span>
-        </label>
-      </div>
-
-      <!-- File upload -->
-      <div
-        v-else-if="field.type === 'file'"
-        class="space-y-2"
-      >
+      <div class="relative">
+        
         <input
-          type="file"
-          :name="field.name"
-          :multiple="field.multiple"
-          class="block w-full text-sm text-slate-100 file:mr-4 file:rounded-md file:border-0 file:bg-violet-600 file:px-4 file:py-2 file:text-sm file:font-semibold file: hover:file:bg-violet-500"
-          @change="
-            updateField(
-              field.name,
-              Array.from($event.target.files || []).map((f) => ({
-                name: f.name,
-                size: f.size,
-                type: f.type,
-              })),
-            )
-          "
+          v-if="['text', 'email', 'number', 'tel', 'url'].includes(field.type)"
+          :type="field.type"
+          class="block w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
+          :placeholder="field.placeholder"
+          :value="valueFor(field).value"
+          @input="updateField(field.name, $event.target.value)"
         />
-        <p class="text-xs text-slate-400">
-          {{ fileSummary(modelValue[field.name]) }}
-        </p>
+
+        <textarea
+          v-else-if="field.type === 'textarea'"
+          class="block w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
+          rows="4"
+          :placeholder="field.placeholder"
+          :value="valueFor(field).value"
+          @input="updateField(field.name, $event.target.value)"
+        ></textarea>
+
+        <Listbox
+          v-else-if="field.type === 'select' && !field.multiple"
+          :model-value="valueFor(field).value || ''"
+          @update:model-value="(val) => updateField(field.name, val)"
+        >
+          <div class="relative">
+            <ListboxButton class="relative w-full cursor-default rounded-lg border border-slate-300 bg-white py-2.5 pl-4 pr-10 text-left shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none">
+              <span class="block truncate text-sm" :class="!valueFor(field).value ? 'text-slate-400' : 'text-slate-900'">
+                {{ (field.options || []).find((o) => o.value === valueFor(field).value)?.label || field.placeholder || 'Select an option' }}
+              </span>
+              <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+              </span>
+            </ListboxButton>
+            <ListboxOptions class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+              <ListboxOption v-for="option in field.options || []" :key="option.value" :value="option.value" v-slot="{ active, selected }">
+                <li :class="[active ? 'bg-primary/10 text-primary' : 'text-slate-900', 'relative cursor-default select-none py-2 pl-3 pr-9']">
+                  <span :class="[selected ? 'font-semibold' : 'font-normal', 'block truncate']">{{ option.label }}</span>
+                  <span v-if="selected" :class="[active ? 'text-primary' : 'text-primary', 'absolute inset-y-0 right-0 flex items-center pr-4']">
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                  </span>
+                </li>
+              </ListboxOption>
+            </ListboxOptions>
+          </div>
+        </Listbox>
+
+        <div v-else-if="field.type === 'checkbox-group'" class="space-y-2 pt-1">
+          <label v-for="option in field.options || []" :key="option.value" class="flex items-center gap-3 p-2 rounded-lg border border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-slate-200 cursor-pointer transition-colors">
+            <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" :value="option.value" :checked="(valueFor(field).value || []).includes(option.value)" @change="handleCheckboxGroup(field, option.value, $event.target.checked)" />
+            <span class="text-sm text-slate-700 font-medium">{{ option.label }}</span>
+          </label>
+        </div>
+
+        <div v-else-if="field.type === 'radio-group'" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <label v-for="option in field.options || []" :key="option.value" class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+            :class="valueFor(field).value === option.value ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 bg-white hover:bg-slate-50'">
+            <input type="radio" :name="field.name" class="h-4 w-4 border-slate-300 text-primary focus:ring-primary" :value="option.value" :checked="valueFor(field).value === option.value" @change="updateField(field.name, option.value)" />
+            <span class="text-sm font-medium" :class="valueFor(field).value === option.value ? 'text-primary' : 'text-slate-700'">{{ option.label }}</span>
+          </label>
+        </div>
+
+        <div v-else-if="field.type === 'range'" class="pt-4 px-1">
+           <div class="relative flex items-center">
+              <input type="range" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary" 
+                 :min="field.min || 0" :max="field.max || 100" 
+                 :value="valueFor(field).value || field.min || 0" 
+                 @input="updateField(field.name, Number($event.target.value))" 
+              />
+           </div>
+           <div class="mt-2 flex justify-between text-xs text-slate-500 font-medium">
+              <span>{{ field.min || 0 }}</span>
+              <span class="text-primary font-bold text-sm">{{ valueFor(field).value || field.min || 0 }}</span>
+              <span>{{ field.max || 100 }}</span>
+           </div>
+        </div>
+
       </div>
 
-      <!-- Color picker -->
-      <input
-        v-else-if="field.type === 'color'"
-        type="color"
-        :name="field.name"
-        class="h-9 w-16 rounded border border-slate-700 bg-transparent"
-        :value="valueFor(field).value || '#6366f1'"
-        @input="updateField(field.name, $event.target.value)"
-      />
-
-      <!-- Range slider -->
-      <div
-        v-else-if="field.type === 'range'"
-        class="space-y-1"
-      >
-        <input
-          type="range"
-          :name="field.name"
-          class="w-full accent-violet-500"
-          :min="field.min ?? 0"
-          :max="field.max ?? 100"
-          :step="field.step ?? 1"
-          :value="valueFor(field).value || field.min || 0"
-          @input="updateField(field.name, Number($event.target.value))"
-        />
-        <div class="text-xs text-slate-400">
-          {{ valueFor(field).value || field.min || 0 }}
-        </div>
-      </div>
-
-      <!-- Progress (display only) -->
-      <div
-        v-else-if="field.type === 'progress'"
-        class="space-y-1"
-      >
-        <div class="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
-          <div
-            class="h-full bg-violet-500"
-            :style="{ width: `${field.value ?? 0}%` }"
-          />
-        </div>
-        <div class="text-xs text-slate-400">
-          {{ field.value ?? 0 }}%
-        </div>
-      </div>
-
-      <!-- Fallback text -->
-      <input
-        v-else
-        :name="field.name"
-        type="text"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        :placeholder="field.placeholder"
-        :required="field.required"
-        :value="valueFor(field).value"
-        @input="updateField(field.name, $event.target.value)"
-      />
-
-      <p
-        v-if="errors[field.name]"
-        class="text-xs text-red-500"
-      >
+      <p v-if="errors[field.name]" class="text-xs text-red-500 font-medium flex items-center gap-1 mt-1">
+        <svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
         {{ errors[field.name] }}
       </p>
+
     </div>
   </form>
 </template>
-

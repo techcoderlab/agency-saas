@@ -28,6 +28,21 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
 
     // Agency leads listing (per-tenant via global scope)
     Route::get('/leads', [LeadController::class, 'index']);
+
+    // Public route to get settings based on domain or user context
+    Route::get('/settings', function (Request $request) {
+        // Logic: If user is logged in, get their tenant's settings.
+        // If not, try to resolve tenant by domain, or return Super Admin (null) settings.
+        
+        // For now, returning Super Admin (Global) settings as default
+        $settings = \App\Models\TenantSetting::whereNull('tenant_id')->first();
+        
+        return response()->json([
+            'theme' => $settings ? $settings->client_theme : null
+        ]);
+    });
+
+
 });
 
 Route::prefix('public')->group(function () {

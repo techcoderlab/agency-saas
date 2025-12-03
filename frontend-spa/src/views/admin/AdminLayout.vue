@@ -16,6 +16,7 @@ const toggleDark = () => {
   }
 }
 
+// Initialize theme
 if (localStorage.getItem('theme') === 'dark') {
   document.documentElement.classList.add('dark')
 }
@@ -27,63 +28,68 @@ const logout = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen w-screen flex transition-colors duration-300">
-    <aside class="sidebar flex flex-col justify-between">
+  <div class="flex h-screen w-full bg-slate-50 dark:bg-slate-900 overflow-hidden transition-colors duration-300">
+    
+    <aside class="w-64 flex-shrink-0 flex flex-col justify-between bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 z-20">
       <div>
-        <div class="pl-2 pb-8 pt-4 flex items-center gap-2">
-          <span class="heading-lg">Agency SaaS</span>
+        <div class="pl-6 pb-8 pt-6 flex items-center gap-2">
+          <span class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Agency SaaS</span>
         </div>
-        <nav class="space-y-1">
+        <nav class="space-y-1 px-3">
           <RouterLink
             to="/admin/leads"
-            class="block px-4 py-3 rounded-xl font-semibold transition hover:bg-violet-500/10 dark:hover:bg-violet-400/10 focus:bg-violet-500/10 dark:focus:bg-violet-400/10"
-            active-class="bg-violet-500/20 dark:bg-violet-500/10 text-violet-500 dark:text-violet-300"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            active-class="bg-primary/10 text-primary"
+            class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
             Leads
           </RouterLink>
           <RouterLink
             to="/admin/forms"
-            class="block px-4 py-3 rounded-xl font-semibold transition hover:bg-violet-500/10 dark:hover:bg-violet-400/10 focus:bg-violet-500/10 dark:focus:bg-violet-400/10"
-            active-class="bg-violet-500/20 dark:bg-violet-500/10 text-violet-500 dark:text-violet-300"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            active-class="bg-primary/10 text-primary"
+            class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
             Forms
           </RouterLink>
           <RouterLink
             v-if="auth.user?.role === 'super_admin'"
             to="/admin/tenants"
-            class="block px-4 py-3 rounded-xl font-semibold transition hover:bg-violet-500/10 dark:hover:bg-violet-400/10 focus:bg-violet-500/10 dark:focus:bg-violet-400/10"
-            active-class="bg-violet-500/20 dark:bg-violet-500/10 text-violet-500 dark:text-violet-300"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            active-class="bg-primary/10 text-primary"
+            class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
             Tenants
           </RouterLink>
         </nav>
       </div>
-      <div class="pb-2">
-        <div class="flex items-center gap-2 mb-4 px-3">
-          <span class="text-xs opacity-60">{{ auth.user?.email }}</span>
+      
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs text-slate-500 truncate max-w-[100px]">{{ auth.user?.email }}</span>
           <button
-            class="text-xs px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+            class="text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-primary transition-colors"
             @click="toggleDark"
           >
             Theme
           </button>
         </div>
         <button
-          class="btn-danger w-full text-center mt-1"
+          class="w-full py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors"
           @click="logout"
         >
           Logout
         </button>
       </div>
     </aside>
-    <main class="main flex-1 flex flex-col">
-      <div class="max-w-7xl w-full mx-auto">
-        <div class="card my-4 p-6 md:p-8">
+
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div class="flex-1 overflow-y-auto p-4 sm:p-8 scroll-smooth">
+        <div class="max-w-7xl mx-auto w-full">
           <RouterView />
         </div>
       </div>
     </main>
+
   </div>
 </template>
-
-

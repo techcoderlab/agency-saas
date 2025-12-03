@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+
+
 html, body {
   @apply min-h-screen w-full transition-colors duration-300 font-sans bg-slate-100 text-slate-800 dark:bg-[#191b24] dark:text-slate-100;
 }
@@ -51,7 +53,7 @@ html, body {
 
 /* Number display */
 .big-num {
-  @apply text-3xl md:text-5xl font-mono tracking-widest font-bold opacity-90;
+  @apply text-3xl md:text-5xl font-sans tracking-widest font-bold opacity-90;
 }
 
 /* Accent/Primary utility */
