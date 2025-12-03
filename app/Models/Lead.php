@@ -16,11 +16,17 @@ class Lead extends Model
     protected $fillable = [
         'tenant_id',
         'form_id',
+        'source',
+        'temperature',
+        'status',
         'payload',
+        'meta_data',
+        'notes'
     ];
 
     protected $casts = [
         'payload' => 'array',
+        'meta_data' => 'array',
     ];
 
     public function tenant()
@@ -31,6 +37,11 @@ class Lead extends Model
     public function form()
     {
         return $this->belongsTo(Form::class);
+    }
+    
+    public function activities()
+    {
+        return $this->hasMany(LeadActivity::class)->orderByDesc('created_at');
     }
 }
 

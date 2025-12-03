@@ -1,7 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import api from '../../utils/request'
+import { useRouter } from 'vue-router'
 
+
+
+const router = useRouter()
 const leads = ref([])
 const loading = ref(false)
 const showLead = ref(false)
@@ -11,7 +15,7 @@ const fetchLeads = async () => {
   loading.value = true
   try {
     const { data } = await api.get('/leads')
-    leads.value = data
+    leads.value = data.data
   } catch (e) {
     console.error(e)
   } finally {
@@ -29,6 +33,20 @@ const closeLead = () => {
   setTimeout(() => {
     activeLead.value = null
   }, 200)
+}
+
+const getStatusColor = (status) => {
+    const map = { new: 'bg-blue-100 text-blue-700', contacted: 'bg-yellow-100 text-yellow-700', closed: 'bg-green-100 text-green-700' }
+    return map[status] || 'bg-gray-100 text-gray-600'
+}
+
+const getTempColor = (temp) => {
+    const map = { cold: 'text-blue-500', warm: 'text-orange-500', hot: 'text-red-600 font-bold' }
+    return map[temp] || 'text-gray-500'
+}
+
+const openLead = (lead) => {
+    router.push({ name: 'lead-details', params: { id: lead.id } })
 }
 
 onMounted(fetchLeads)
@@ -57,15 +75,34 @@ onMounted(fetchLeads)
           <thead class="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
             <tr>
               <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">ID</th>
-              <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Form ID</th>
-              <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Submitted At</th>
+              <!-- <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Form ID</th> -->
+              <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Lead</th>
+              <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Status</th>
+              <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Temp</th>
+              <th class="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Date</th>
               <th class="px-6 py-4 text-right font-semibold text-slate-700 dark:text-slate-300">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
             <tr v-for="lead in leads" :key="lead.id" class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
               <td class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs">{{ lead.id }}</td>
-              <td class="px-6 py-4 text-slate-900 dark:text-slate-200 font-medium">{{ lead.form_id }}</td>
+              <!-- <td class="px-6 py-4 text-slate-900 dark:text-slate-200 font-medium">{{ lead.form_id }}</td> -->
+
+              <td class="px-6 py-4 text-slate-600 dark:text-slate-400">
+                <div class="font-medium">{{ lead.payload?.email || 'No Email' }}</div>
+                <div class="text-xs text-slate-500">{{ lead.source }} {{ lead.source === 'form' ? '( ' + lead.form_id + ' )' : '' }}</div>
+              </td>
+              <td class="px-6 py-4 text-slate-600 dark:text-slate-400">
+                <span :class="['px-2 py-1 rounded-full text-xs capitalize', getStatusColor(lead.status)]">
+                 {{ lead.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-slate-600 dark:text-slate-400">
+                <span :class="['text-xs capitalize flex items-center gap-1', getTempColor(lead.temperature)]">
+                 ● {{ lead.temperature }}
+                </span>
+              </td>
+
               <td class="px-6 py-4 text-slate-600 dark:text-slate-400">
                 {{ new Date(lead.created_at).toLocaleString() }}
               </td>
@@ -74,8 +111,9 @@ onMounted(fetchLeads)
                   class="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                   @click="viewLead(lead)"
                 >
-                  View Details
-                </button>
+                Quick View
+              </button>
+              <button @click="openLead(lead)" class="ml-3 text-blue-500 hover:underline">Open</button>
               </td>
             </tr>
             <tr v-if="leads.length === 0 && !loading">

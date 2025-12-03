@@ -37,17 +37,26 @@ class PublicFormController extends Controller
              return response()->json(['message' => 'Form not active.'], 404);
         }
 
+        // Validate payload if necessary, or just accept all
         $payload = $request->all();
 
         $lead = Lead::create([
             'tenant_id' => $form->tenant_id,
-            'form_id' => $form->id,
-            'payload' => $payload,
+            'form_id'   => $form->id,
+            'source'    => 'form', // EXPLICITLY set source
+            'payload'   => $payload,
+            // Status and Temperature default to 'new'/'cold' via database default
         ]);
 
-        // Dispatch to queue
-        // SendToN8NJob::dispatch($lead)->onQueue('database');
-        SendToN8NJob::dispatch($lead);
+        // CHANGED: Dispatch the new generic webhook job
+        // The Observer will ALSO fire a webhook on creation, so to avoid 
+        // double-firing, you might want to rely solely on the Observer 
+        // OR disable the Observer's "created" hook if using this. 
+        // For safety, let's rely on the Observer (created event) to handle the webhook.
+        // If you keep this line, you get two webhooks. 
+        // RECOMMENDATION: Remove this manual dispatch and let LeadObserver handle it.
+        
+        // DispatchWebhookJob::dispatch($lead); 
 
         return response()->json([
             'message' => 'Submitted successfully.',

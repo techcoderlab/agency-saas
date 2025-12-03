@@ -13,7 +13,8 @@ const emit = defineEmits(['saved', 'cancel'])
 
 // State
 const name = ref(props.form?.name || '')
-const n8nWebhookUrl = ref(props.form?.n8n_webhook_url || '')
+const webhookUrl = ref(props.form?.webhook_url || '')
+const webhookSecret = ref(props.form?.webhook_secret || '')
 const schemaText = ref(JSON.stringify(props.form?.schema || [], null, 2))
 const isActive = ref(props.form?.is_active ?? true)
 const error = ref('')
@@ -24,7 +25,8 @@ watch(
   () => props.form,
   (form) => {
     name.value = form?.name || ''
-    n8nWebhookUrl.value = form?.n8n_webhook_url || ''
+    webhookUrl.value = form?.webhook_url || ''
+    webhookSecret.value = form?.webhook_secret || ''
     schemaText.value = JSON.stringify(form?.schema || [], null, 2)
     isActive.value = form?.is_active ?? true
   },
@@ -56,7 +58,8 @@ const save = async () => {
     const payload = {
       name: name.value,
       schema: parsedSchema.value,
-      n8n_webhook_url: n8nWebhookUrl.value || null,
+      webhook_url: webhookUrl.value || null,
+      webhook_secret: webhookSecret.value || null,
       is_active: isActive.value,
     }
 
@@ -111,11 +114,23 @@ const save = async () => {
                 Webhook URL <span class="text-xs font-normal text-slate-400">(Optional Override)</span>
               </label>
               <input
-                v-model="n8nWebhookUrl"
+                v-model="webhookUrl"
                 type="url"
                 class="block w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm placeholder-slate-400 focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
                 placeholder="https://n8n.your-domain.com/webhook/..."
               />
+            </div>
+            <div class="space-y-1">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Webhook Secret <span class="text-xs font-normal text-slate-400">(Optional)</span>
+              </label>
+              <input
+                v-model="webhookSecret"
+                type="password"
+                class="block w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm placeholder-slate-400 focus:border-primary focus:ring-1 focus:ring-primary dark:text-white"
+                placeholder="Secret key for signature verification"
+              />
+              <p class="text-xs text-slate-500 mt-1">If set, we send a `X-Webhook-Signature` header.</p>
             </div>
 
             <div class="flex items-center gap-2 pt-1">

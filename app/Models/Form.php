@@ -21,8 +21,9 @@ class Form extends Model
         'tenant_id',
         'name',
         'schema',
-        'n8n_webhook_url',
-        'is_active',
+        'webhook_url', 
+        'webhook_secret',
+        'is_active'
     ];
 
     protected $casts = [

@@ -5,6 +5,7 @@ import LeadsPage from '../views/admin/LeadsPage.vue'
 import FormsPage from '../views/admin/FormsPage.vue'
 import PublicFormPage from '../views/public/PublicFormPage.vue'
 import LoginPage from '../views/auth/LoginPage.vue'
+import LeadDetails from '../views/admin/LeadDetails.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,11 @@ const router = createRouter({
           path: 'leads',
           name: 'leads',
           component: LeadsPage,
+        },
+        {
+          path: 'leads/:id',
+          name: 'lead-details',
+          component: LeadDetails,
         },
         {
           path: 'forms',

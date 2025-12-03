@@ -28,6 +28,10 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
 
     // Agency leads listing (per-tenant via global scope)
     Route::get('/leads', [LeadController::class, 'index']);
+    Route::get('/leads/{lead}', [LeadController::class, 'show']);
+    Route::put('/leads/{lead}', [LeadController::class, 'update']);
+    Route::post('/leads/{lead}/note', [LeadController::class, 'addNote']);
+    Route::post('/leads/import', [LeadController::class, 'import']); // Add the import route
 
     // Public route to get settings based on domain or user context
     Route::get('/settings', function (Request $request) {
@@ -45,7 +49,8 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
 
 });
 
-Route::prefix('public')->group(function () {
+// Wrap public routes in the throttle middleware
+Route::prefix('public')->middleware('throttle:60,1')->group(function () {
     Route::get('/form/{uuid}', [PublicFormController::class, 'show']);
     Route::post('/form/{uuid}/submit', [PublicFormController::class, 'submit']);
 });
