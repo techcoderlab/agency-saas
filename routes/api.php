@@ -8,6 +8,8 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Middleware\CheckTenantStatus;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -31,9 +33,10 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::delete('/forms/{form}', [FormController::class, 'destroy']);
 
     // Webhooks Management
-    Route::get('/webhooks', [WebhookController::class, 'index']);
-    Route::post('/webhooks', [WebhookController::class, 'store']);
-    Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
+    // Route::get('/webhooks', [WebhookController::class, 'index']);
+    // Route::post('/webhooks', [WebhookController::class, 'store']);
+    // Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
+    Route::apiResource('webhooks', WebhookController::class);
 
 
     // Agency leads listing (per-tenant via global scope)

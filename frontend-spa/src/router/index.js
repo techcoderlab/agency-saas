@@ -6,6 +6,7 @@ import FormsPage from '../views/admin/FormsPage.vue'
 import PublicFormPage from '../views/public/PublicFormPage.vue'
 import LoginPage from '../views/auth/LoginPage.vue'
 import LeadDetails from '../views/admin/LeadDetails.vue'
+import WebhooksPage from '../views/admin/WebhooksPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,6 +45,12 @@ const router = createRouter({
           name: 'superadmin-tenants',
           component: SuperAdminTenants,
           meta: { role: 'super_admin' },
+        },
+        {
+          path: 'webhooks',
+          name: 'webhooks',
+          component: WebhooksPage,
+          // meta: { requiresAuth: true }
         },
       ],
     },

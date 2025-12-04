@@ -38,28 +38,48 @@ const logout = async () => {
         <nav class="space-y-1 px-3">
           <RouterLink
             to="/admin/leads"
-            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex gap-2"
             active-class="bg-primary/10 text-primary"
             class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3a2 2 0 01-2-2V7a2 2 0 012-2h12a2 2 0 012 2v3.292A3 3 0 1117 16v-2.646M20 18a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
             Leads
           </RouterLink>
           <RouterLink
             to="/admin/forms"
-            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex gap-2"
             active-class="bg-primary/10 text-primary"
             class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
             Forms
           </RouterLink>
           <RouterLink
             v-if="auth.user?.role === 'super_admin'"
             to="/admin/tenants"
-            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex gap-2"
             active-class="bg-primary/10 text-primary"
             class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.225-.564-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
             Tenants
+          </RouterLink>
+          <RouterLink
+            to="/admin/webhooks"
+            class="block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex gap-2"
+            active-class="bg-primary/10 text-primary"
+            class-active="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
+          >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Webhooks
           </RouterLink>
         </nav>
       </div>

@@ -30,13 +30,13 @@ const stats = ref({
 // Modals State
 const showLead = ref(false)
 const activeLead = ref(null)
-const showWebhooks = ref(false)
+// const showWebhooks = ref(false)
 const showSettings = ref(false) // CRM Builder Modal
 
 // Webhook Form
-const webhooks = ref([])
-const loadingWebhooks = ref(false)
-const webhookForm = reactive({ name: '', url: '', secret: '', events: [] })
+// const webhooks = ref([])
+// const loadingWebhooks = ref(false)
+// const webhookForm = reactive({ name: '', url: '', secret: '', events: [] })
 
 // Settings Form
 const settingsForm = reactive({
@@ -221,14 +221,14 @@ const openLead = (lead) => {
 }
 
 // Webhook logic (preserved)
-const openWebhooks = async () => { showWebhooks.value = true; try { const { data } = await api.get('/webhooks'); webhooks.value = data } catch (e) {} }
-const closeWebhooks = () => { showWebhooks.value = false }
-const createWebhook = async () => { try { await api.post('/webhooks', webhookForm); webhookForm.url=''; webhookForm.events=[]; await api.get('/webhooks').then(r => webhooks.value = r.data) } catch (e) {} }
-const deleteWebhook = async (id) => { if(confirm('Sure?')) { await api.delete(`/webhooks/${id}`); await api.get('/webhooks').then(r => webhooks.value = r.data) } }
-const availableEvents = [
-  { label: 'Created', value: 'lead.created' }, { label: 'Status Update', value: 'lead.updated.status' },
-  { label: 'Temp Update', value: 'lead.updated.temperature' }, { label: 'Any Update', value: 'lead.updated' }
-]
+// const openWebhooks = async () => { showWebhooks.value = true; try { const { data } = await api.get('/webhooks'); webhooks.value = data } catch (e) {} }
+// const closeWebhooks = () => { showWebhooks.value = false }
+// const createWebhook = async () => { try { await api.post('/webhooks', webhookForm); webhookForm.url=''; webhookForm.events=[]; await api.get('/webhooks').then(r => webhooks.value = r.data) } catch (e) {} }
+// const deleteWebhook = async (id) => { if(confirm('Sure?')) { await api.delete(`/webhooks/${id}`); await api.get('/webhooks').then(r => webhooks.value = r.data) } }
+// const availableEvents = [
+//   { label: 'Created', value: 'lead.created' }, { label: 'Status Update', value: 'lead.updated.status' },
+//   { label: 'Temp Update', value: 'lead.updated.temperature' }, { label: 'Any Update', value: 'lead.updated' }
+// ]
 
 onMounted(fetchData)
 </script>
@@ -289,13 +289,13 @@ onMounted(fetchData)
            Config
         </button>
 
-        <button 
+        <!-- <button 
           @click="openWebhooks" 
           class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
         >
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           Webhooks
-        </button>
+        </button> -->
 
         <button @click="fetchData" class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium dark:text-black bg-white border hover:bg-slate-50">Refresh</button>
       </div>
@@ -542,7 +542,7 @@ onMounted(fetchData)
       </div>
     </Transition>
 
-    <Transition name="modal">
+    <!-- <Transition name="modal">
       <div v-if="showWebhooks" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
           <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeWebhooks"></div>
         <div class="relative w-full max-w-3xl bg-white dark:bg-slate-950 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] transform transition-all">
@@ -607,7 +607,7 @@ onMounted(fetchData)
           </div>
         </div>
       </div>
-    </Transition>
+    </Transition> -->
   </div>
 </template>
 
