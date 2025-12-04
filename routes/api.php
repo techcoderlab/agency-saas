@@ -15,11 +15,14 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function () {
     Route::post('/n8n/token', [AuthController::class, 'n8nToken']);
 
+
+    
     // Super admin tenant management
     Route::get('/tenants', [TenantController::class, 'index']);
     Route::post('/tenants', [TenantController::class, 'store']);
     Route::patch('/tenants/{tenant}', [TenantController::class, 'update']);
     Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy']);
+    Route::post('/tenants/crm-config', [TenantController::class, 'updateCrmConfig']);
 
     // Agency forms CRUD (per-tenant via global scope)
     Route::get('/forms', [FormController::class, 'index']);
@@ -33,9 +36,9 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy']);
 
 
-
     // Agency leads listing (per-tenant via global scope)
     Route::get('/leads', [LeadController::class, 'index']);
+    Route::get('/leads/stats', [LeadController::class, 'stats']); // <--- ADD THIS HERE
     Route::get('/leads/{lead}', [LeadController::class, 'show']);
     Route::put('/leads/{lead}', [LeadController::class, 'update']);
     Route::post('/leads/{lead}/note', [LeadController::class, 'addNote']);

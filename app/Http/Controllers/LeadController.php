@@ -3,12 +3,59 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Models\TenantSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class LeadController extends Controller
 {
+
+    private function getCrmConfig($tenantId)
+    {
+        $settings = TenantSetting::where('tenant_id', $tenantId)->first();
+        
+        return $settings->crm_config ?? [
+            'entity_name_singular' => 'Lead',
+            'entity_name_plural' => 'Leads',
+            'statuses' => [
+                ['slug' => 'new', 'label' => 'New', 'color' => 'blue'],
+                ['slug' => 'contacted', 'label' => 'Contacted', 'color' => 'yellow'],
+                ['slug' => 'closed', 'label' => 'Closed', 'color' => 'green'],
+            ]
+        ];
+    }
+
+    /**
+     * Get key metrics for the dashboard.
+     * Uses the Tenant Scope automatically via the Model.
+     */
+    public function stats(Request $request)
+    {
+        // Use a single aggregate query for performance (1 DB call instead of 4)
+        $statsQuery = Lead::query()
+            ->selectRaw('count(*) as total')
+            ->selectRaw("count(case when created_at >= ? then 1 end) as new_today", [now()->startOfDay()])
+            ->selectRaw("count(case when temperature = 'hot' then 1 end) as hot_leads")
+            ->selectRaw("count(case when status = 'closed' then 1 end) as closed_leads")
+            ->first();
+
+        $conversion = $statsQuery->total > 0 
+            ? round(($statsQuery->closed_leads / $statsQuery->total) * 100, 1) 
+            : 0;
+
+        return response()->json([
+            'stats' => [
+                'total' => $statsQuery->total,
+                'new_today' => $statsQuery->new_today,
+                'hot_leads' => $statsQuery->hot_leads,
+                'conversion_rate' => $conversion . '%'
+            ],
+            // Inject Config here so frontend adapts immediately
+            'config' => $this->getCrmConfig($request->user()->tenant_id)
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = Lead::query();
@@ -51,9 +98,15 @@ class LeadController extends Controller
             });
         }
 
+        // --- PRODUCTION IMPROVEMENT: Dynamic Pagination ---
+        // Kanban view might need more density. 
+        // We cap it at 100 to prevent abuse.
+        $perPage = $request->input('per_page', 20);
+        $perPage = min(max($perPage, 5), 100);
+
         return $query->with('form:id,name')
-                     ->orderByDesc('created_at')
-                     ->paginate(20);
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
     }
 
     public function show(Lead $lead)

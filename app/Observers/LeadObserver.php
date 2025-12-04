@@ -59,15 +59,15 @@ class LeadObserver
             }
         }
 
-        // // 4. Fire Legacy Form Webhook (Only on Creation)
-        // if ($event === 'lead.created' && $lead->form && $lead->form->webhook_url) {
-        //     $legacyWebhook = new Webhook([
-        //         'url' => $lead->form->webhook_url,
-        //         'secret' => $lead->form->webhook_secret,
-        //         'is_active' => true
-        //     ]);
-        //     DispatchWebhookJob::dispatch($lead, $legacyWebhook, 'form.submission');
-        // }
+        // 4. Fire Legacy Form Webhook (Only on Creation)
+        if ($event === 'lead.created' && $lead->form && $lead->form->webhook_url) {
+            $legacyWebhook = new Webhook([
+                'url' => $lead->form->webhook_url,
+                'secret' => $lead->form->webhook_secret,
+                'is_active' => true
+            ]);
+            DispatchWebhookJob::dispatch($lead, $legacyWebhook, 'form.submission');
+        }
     }
 
     public function created(Lead $lead): void

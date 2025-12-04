@@ -83,7 +83,7 @@ const logout = async () => {
       </div>
     </aside>
 
-    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-200/80 dark:bg-slate-900">
       <div class="flex-1 overflow-y-auto p-4 sm:p-8 scroll-smooth">
         <div class="max-w-7xl mx-auto w-full">
           <RouterView />

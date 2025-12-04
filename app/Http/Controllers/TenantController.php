@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Models\TenantSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -76,6 +77,27 @@ class TenantController extends Controller
         $tenant->delete();
 
         return response()->json([], Response::HTTP_NO_CONTENT);
+    }
+
+    public function updateCrmConfig(Request $request)
+    {
+        $validated = $request->validate([
+            'entity_name_singular' => 'required|string|max:50',
+            'entity_name_plural' => 'required|string|max:50',
+            'statuses' => 'required|array|min:1',
+            'statuses.*.slug' => 'required|string|distinct',
+            'statuses.*.label' => 'required|string',
+            'statuses.*.color' => 'required|string'
+        ]);
+
+        $settings = TenantSetting::firstOrCreate(
+            ['tenant_id' => $request->user()->tenant_id]
+        );
+
+        $settings->crm_config = $validated;
+        $settings->save();
+
+        return response()->json($settings->crm_config);
     }
 }
 
