@@ -364,7 +364,7 @@ onMounted(fetchData)
             >
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-bold text-slate-700 dark:text-slate-200">{{ status.label }}</h3>
-                    <span class="text-xs font-bold px-2 py-1 rounded-full bg-white dark:bg-slate-800 border" :class="getStatusColor(status.slug).split(' ')[1]">
+                    <span class="text-xs font-bold px-2 py-1 rounded-full bg-slate-200 " :class="getStatusColor(status.slug).split(' ')[1]">
                         {{ kanbanColumns[status.slug]?.length || 0 }}
                     </span>
                 </div>
@@ -373,20 +373,21 @@ onMounted(fetchData)
                     <div 
                         v-for="lead in kanbanColumns[status.slug]" 
                         :key="lead.id"
-                        @click="viewLead(lead)"
-                        class="bg-white dark:bg-slate-950 p-4 rounded-lg shadow-sm border border-l-4 cursor-pointer hover:shadow-md transition-all"
+                        @click="openLead(lead)"
+                        class="bg-white dark:bg-slate-950 px-4 py-3 rounded-lg shadow-sm border border-l-4 cursor-pointer hover:shadow-md transition-all"
                         :class="getStatusColor(status.slug)"
                     >
                         <div class="flex justify-between items-start mb-2">
-                            <span class="font-mono text-xs opacity-60">#{{ lead.id }}</span>
-                            <span :class="['w-2 h-2 rounded-full', lead.temperature === 'hot' ? 'bg-red-500 animate-pulse' : 'bg-slate-300']"></span>
+                            <!-- <span class="font-mono text-xs opacity-60">#{{ lead.id }}</span> -->
+                            <span class="font-mono text-xs opacity-60 text-slate-900 dark:text-white">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
+                            <span :class="['w-3 h-3 rounded-full', lead.temperature === 'hot' ? 'bg-red-500 animate-pulse' : 'bg-slate-950']"></span>
                         </div>
                         <div class="font-medium text-sm truncate text-slate-900 dark:text-white">
                             {{ lead.payload?.email || 'No Email' }}
                         </div>
-                         <div class="mt-2 flex items-center justify-between text-xs opacity-70">
+                         <!-- <div class="mt-2 flex items-center justify-between text-xs opacity-70">
                             <span>{{ new Date(lead.created_at).toLocaleDateString() }}</span>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             </div>
@@ -428,8 +429,8 @@ onMounted(fetchData)
                <td class="px-6 py-4"><span :class="getTempColor(lead.temperature)">● {{ lead.temperature }}</span></td>
                <td class="px-6 py-4">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
                <td class="px-6 py-4 text-right">
-                <button @click="viewLead(lead)" class="text-blue-600 hover:underline">View</button>
-                <button @click="openLead(lead)" class="ml-3 text-blue-500 hover:underline">Edit</button>
+                <!-- <button @click="viewLead(lead)" class="text-blue-600 hover:underline">View</button> -->
+                <button @click="openLead(lead)" class="ml-3 text-blue-500 hover:underline">Open</button>
               </td>
             </tr>
           </tbody>
@@ -460,14 +461,14 @@ onMounted(fetchData)
                  </div>
               </div>
 
-              <div class="mt-6">
+              <!-- <div class="mt-6">
                 <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Automation Actions</h4>
                 <div class="flex flex-wrap gap-2">
                     <button @click="triggerAutomation('send_whatsapp_reminder')" class="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-md text-xs font-medium hover:bg-green-100 transition-colors">📲 Send WhatsApp</button>
                     <button @click="triggerAutomation('resend_verification')" class="px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-xs font-medium hover:bg-blue-100 transition-colors">🔄 Resend OTP</button>
                     <button @click="triggerAutomation('generate_invoice')" class="px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-md text-xs font-medium hover:bg-purple-100 transition-colors">📄 Gen Invoice</button>
                 </div>
-              </div>
+              </div> -->
 
               <div>
                 <h4 class="text-sm font-medium text-slate-900 dark:text-white mb-3">Form Data</h4>

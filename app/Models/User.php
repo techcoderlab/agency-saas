@@ -57,7 +57,7 @@ class User extends Authenticatable
 
     public function isNotSuperAdmin(): bool
     {
-        return ! $this->isSuperAdmin();
+        return !$this->isSuperAdmin();
     }
 
     public function tenant()

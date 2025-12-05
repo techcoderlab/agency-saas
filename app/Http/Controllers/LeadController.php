@@ -58,6 +58,11 @@ class LeadController extends Controller
 
     public function index(Request $request)
     {
+        // Check Permission
+        if (! $request->user()->tokenCan('leads:read')) {
+            abort(403, 'Access denied: Missing "leads:read" permission');
+        }
+
         $query = Lead::query();
 
         // --- Standard Filters ---
@@ -111,15 +116,32 @@ class LeadController extends Controller
 
     public function show(Lead $lead)
     {
-        return $lead->load(['activities', 'form']);
+
+        if (! request()->user()->tokenCan('leads:read')) {
+            abort(403, 'Access denied: Missing "leads:read" permission');
+        }
+
+        $lead->load(['activities', 'form']);
+        
+        // Inject CRM Config for dynamic frontend rendering
+        // This attaches the config to the lead object response seamlessly
+        $lead->setAttribute('crm_config', $this->getCrmConfig($lead->tenant_id));
+        
+        return $lead;
     }
+
 
     public function update(Request $request, Lead $lead)
     {
+        // ENFORCE WRITE PERMISSION
+        if (! $request->user()->tokenCan('leads:write')) {
+            abort(403, 'Access denied: Missing "leads:write" permission');
+        }
+
         $validated = $request->validate([
-            'status' => 'required|string',
-            'temperature' => 'required|string',
-            'notes' => 'nullable|string'
+            'status' => 'sometimes|string',
+            'temperature' => 'sometimes|string',
+            'notes' => 'sometimes|nullable|string'
         ]);
 
         // Fix for webhook looping:
@@ -136,6 +158,11 @@ class LeadController extends Controller
 
     public function addNote(Request $request, Lead $lead)
     {
+        // ENFORCE WRITE PERMISSION
+        if (! $request->user()->tokenCan('leads:write')) {
+            abort(403, 'Access denied: Missing "leads:write" permission');
+        }
+
         $request->validate(['content' => 'required|string']);
 
         $activity = $lead->activities()->create([
@@ -152,6 +179,11 @@ class LeadController extends Controller
 
     public function import(Request $request)
     {
+        // ENFORCE WRITE PERMISSION
+        if (! $request->user()->tokenCan('leads:write')) {
+            abort(403, 'Access denied: Missing "leads:write" permission');
+        }
+
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',
             'form_id' => 'nullable|exists:forms,id'

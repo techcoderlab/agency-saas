@@ -7,6 +7,8 @@ import PublicFormPage from '../views/public/PublicFormPage.vue'
 import LoginPage from '../views/auth/LoginPage.vue'
 import LeadDetails from '../views/admin/LeadDetails.vue'
 import WebhooksPage from '../views/admin/WebhooksPage.vue'
+import ApiKeysPage from '../views/admin/ApiKeysPage.vue' // Import the new view
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,6 +54,13 @@ const router = createRouter({
           component: WebhooksPage,
           // meta: { requiresAuth: true }
         },
+
+        // New Route Here
+        {
+          path: 'api-keys',
+          name: 'api-keys',
+          component: ApiKeysPage
+        }
       ],
     },
     {

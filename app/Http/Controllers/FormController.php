@@ -10,15 +10,24 @@ class FormController extends Controller
 {
     public function index(Request $request)
     {
+        if (! $request->user()->tokenCan('forms:read')) {
+            abort(403, 'Access denied: Missing "forms:read" permission');
+        }
+
         return Form::orderByDesc('created_at')->get();
     }
 
     public function store(Request $request)
     {
+
         $user = $request->user();
 
         if (! $user || $user->isSuperAdmin()) {
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (! $request->user()->tokenCan('forms:write')) {
+            abort(403, 'Access denied: Missing "forms:write" permission');
         }
 
         $validated = $request->validate([
@@ -48,6 +57,10 @@ class FormController extends Controller
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 
+        if (! $request->user()->tokenCan('forms:write')) {
+            abort(403, 'Access denied: Missing "forms:write" permission');
+        }
+
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'schema' => ['sometimes', 'array'],
@@ -68,6 +81,10 @@ class FormController extends Controller
 
         if (! $user || $user->isSuperAdmin()) {
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (! $request->user()->tokenCan('forms:write')) {
+            abort(403, 'Access denied: Missing "forms:write" permission');
         }
 
         $form->delete();

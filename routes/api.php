@@ -7,8 +7,10 @@ use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Middleware\CheckTenantStatus;
+use App\Http\Controllers\ApiKeyController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -46,6 +48,12 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::put('/leads/{lead}', [LeadController::class, 'update']);
     Route::post('/leads/{lead}/note', [LeadController::class, 'addNote']);
     Route::post('/leads/import', [LeadController::class, 'import']); // Add the import route
+
+
+    // API Keys Management (New)
+    Route::get('/api-keys', [ApiKeyController::class, 'index']);
+    Route::post('/api-keys', [ApiKeyController::class, 'store']);
+    Route::delete('/api-keys/{id}', [ApiKeyController::class, 'destroy']);
 
     // Public route to get settings based on domain or user context
     Route::get('/settings', function (Request $request) {
