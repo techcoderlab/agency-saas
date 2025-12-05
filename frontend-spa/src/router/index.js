@@ -8,7 +8,8 @@ import LoginPage from '../views/auth/LoginPage.vue'
 import LeadDetails from '../views/admin/LeadDetails.vue'
 import WebhooksPage from '../views/admin/WebhooksPage.vue'
 import ApiKeysPage from '../views/admin/ApiKeysPage.vue' // Import the new view
-
+import AiChatIndexPage from '../views/admin/ai-chat/AiChatIndex.vue'
+import AiChatRoomPage from '../views/admin/ai-chat/AiChatRoom.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -41,6 +42,16 @@ const router = createRouter({
           path: 'forms',
           name: 'forms',
           component: FormsPage,
+        },
+        {
+          path: 'ai-chats',
+          name: 'ai-chats-index',
+          component: AiChatIndexPage
+        },
+        {
+            path: 'ai-chats/:id',
+            name: 'ai-chat-room',
+            component: AiChatRoomPage
         },
         {
           path: 'tenants',

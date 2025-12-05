@@ -32,6 +32,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
   { name: 'Leads', href: '/admin/leads', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
   { name: 'Forms', href: '/admin/forms', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { name: 'Ai Chats', href: '/admin/ai-chats', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
   { name: 'Webhooks', href: '/admin/webhooks', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
   // API Keys Link Added Here
   { name: 'API Keys', href: '/admin/api-keys', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11.536 16.464l-1.414 1.414a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 010-1.414l1.414-1.414L15 7zm3 5a1 1 0 11-2 0 1 1 0 012 0z' },
@@ -39,7 +40,7 @@ const navigation = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 flex transition-colors duration-300">
+  <div class="min-h-screen bg-slate-100 dark:bg-slate-900 flex transition-colors duration-300">
     <div class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between">
       <div>
         <div class="flex h-16 items-center px-6 border-b border-slate-200 dark:border-slate-800">

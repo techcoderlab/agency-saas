@@ -14,12 +14,13 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
-    "axios": "^1.7.9",
     "@headlessui/vue": "^1.7.22",
-    "zod": "^3.23.8",
+    "axios": "^1.7.9",
+    "deep-chat": "^2.3.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.3"
+    "vue-router": "^4.6.3",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

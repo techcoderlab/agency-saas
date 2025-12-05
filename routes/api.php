@@ -8,6 +8,7 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Middleware\CheckTenantStatus;
 use App\Http\Controllers\ApiKeyController;
+use App\Http\Controllers\AiChatController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -27,6 +28,13 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::patch('/tenants/{tenant}', [TenantController::class, 'update']);
     Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy']);
     Route::post('/tenants/crm-config', [TenantController::class, 'updateCrmConfig']);
+
+
+    // AI Chat Modules
+    Route::apiResource('ai-chats', AiChatController::class);
+    Route::get('/ai-chats/{aiChat}/history', [\App\Http\Controllers\AiChatController::class, 'history']);
+    Route::get('ai-chats/{aiChat}/status', [AiChatController::class, 'checkConnection']);
+    Route::post('/ai-chats/{aiChat}/chat', [AiChatController::class, 'chat']);
 
     // Agency forms CRUD (per-tenant via global scope)
     Route::get('/forms', [FormController::class, 'index']);
@@ -54,6 +62,7 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::get('/api-keys', [ApiKeyController::class, 'index']);
     Route::post('/api-keys', [ApiKeyController::class, 'store']);
     Route::delete('/api-keys/{id}', [ApiKeyController::class, 'destroy']);
+
 
     // Public route to get settings based on domain or user context
     Route::get('/settings', function (Request $request) {
