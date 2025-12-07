@@ -12,6 +12,7 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
+
         $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -22,6 +23,12 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json(['message' => 'Invalid credentials.'], 422);
+        }
+
+        if ($user->tenant && $user->tenant->status === 'suspended') {
+            return response()->json([
+                'message' => 'Your account is suspended. contact administrator!',
+            ], 403);
         }
 
         $token = $user->createToken('api')->plainTextToken;
@@ -53,9 +60,10 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-            'role' => 'agency_owner',
             'tenant_id' => $tenant->id,
         ]);
+
+        $user->assignRole('agency_owner');
 
         $token = $user->createToken('api')->plainTextToken;
 

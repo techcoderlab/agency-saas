@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     
     // Super admin tenant management
     Route::get('/tenants', [TenantController::class, 'index']);
+    Route::get('/tenants/modules', [TenantController::class, 'getModulesForTenant']);
     Route::post('/tenants', [TenantController::class, 'store']);
     Route::patch('/tenants/{tenant}', [TenantController::class, 'update']);
     Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy']);
@@ -56,12 +57,14 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
     Route::put('/leads/{lead}', [LeadController::class, 'update']);
     Route::post('/leads/{lead}/note', [LeadController::class, 'addNote']);
     Route::post('/leads/import', [LeadController::class, 'import']); // Add the import route
-
-
+    
+    
     // API Keys Management (New)
     Route::get('/api-keys', [ApiKeyController::class, 'index']);
     Route::post('/api-keys', [ApiKeyController::class, 'store']);
+    Route::put('/api-keys/{id}', [ApiKeyController::class, 'update']);
     Route::delete('/api-keys/{id}', [ApiKeyController::class, 'destroy']);
+    Route::post('/api-keys/{id}/rotate', [ApiKeyController::class, 'rotate']);
 
 
     // Public route to get settings based on domain or user context

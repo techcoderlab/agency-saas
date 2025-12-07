@@ -1,10 +1,14 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import api from '../../utils/request'
+import { useApiCache } from '../../composables/useApiCache'; // Adjust path as necessary
+
 
 const tenants = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const { fetchDataWithCache } = useApiCache();
+
 
 const showForm = ref(false)
 const editingTenant = ref(null)
@@ -13,7 +17,11 @@ const form = ref({
   name: '',
   domain: '',
   status: 'active',
+  enabled_modules: [] // New field
 })
+
+// Available Modules Definition
+const availableModules = ref([]);
 
 const error = ref('')
 
@@ -22,15 +30,30 @@ const resetForm = () => {
     name: '',
     domain: '',
     status: 'active',
+    enabled_modules: [] // Default all
   }
   editingTenant.value = null
   error.value = ''
 }
 
+
+const fetchModules = async () => {
+  // loading.value = true
+  const data = await fetchDataWithCache(
+      'tenant_modules_cache',
+      600000, // ttl = 10 mins
+      () => api.get('/tenants/modules')
+    );
+    availableModules.value = data.filter(item => item.id !== 'tenants')
+  // loading.value = false
+}
+
+
 const fetchTenants = async () => {
   loading.value = true
   const { data } = await api.get('/tenants')
-  tenants.value = data
+  tenants.value = data.tenants
+  await fetchModules()
   loading.value = false
 }
 
@@ -45,6 +68,8 @@ const openEdit = (tenant) => {
     name: tenant.name || '',
     domain: tenant.domain || '',
     status: tenant.status || 'active',
+    // Ensure we handle potential nulls from backend
+    enabled_modules: tenant.enabled_modules || []
   }
   error.value = ''
   showForm.value = true
@@ -59,6 +84,7 @@ const saveTenant = async () => {
       name: form.value.name,
       domain: form.value.domain || null,
       status: form.value.status,
+      enabled_modules: form.value.enabled_modules // Send array
     }
 
     let response
@@ -76,6 +102,7 @@ const saveTenant = async () => {
       tenants.value.unshift(saved)
     }
 
+    fetchTenants() // Refresh to get formatted data
     showForm.value = false
     resetForm()
   } catch (e) {
@@ -114,77 +141,47 @@ onMounted(fetchTenants)
       </button>
     </div>
 
-    <div
-      v-if="showForm"
-      class=" shadow rounded p-4 space-y-4"
-    >
-      <h3 class="text-lg font-semibold">
+    <div v-if="showForm" class="bg-white dark:bg-slate-900 shadow-lg rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6">
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white">
         {{ editingTenant ? 'Edit Tenant' : 'New Tenant' }}
       </h3>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              v-model="form.name"
-              type="text"
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-            />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+           <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
+            <input v-model="form.name" type="text" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
           </div>
-
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
-            <input
-              v-model="form.domain"
-              type="text"
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-              placeholder="optional"
-            />
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Domain</label>
+            <input v-model="form.domain" type="text" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white" placeholder="optional" />
           </div>
-
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              v-model="form.status"
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-500"
-            >
-              <option value="active">
-                Active
-              </option>
-              <option value="suspended">
-                Suspended
-              </option>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+            <select v-model="form.status" class="w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
             </select>
           </div>
         </div>
 
-        <div />
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800">
+            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Enabled Modules</label>
+            <div class="space-y-2">
+                <div v-for="mod in availableModules" :key="mod.id" class="flex items-center">
+                    <input type="checkbox" :id="`mod-${mod.id}`" :value="mod.id" v-model="form.enabled_modules" 
+                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800">
+                    <label :for="`mod-${mod.id}`" class="ml-2 text-sm text-slate-700 dark:text-slate-300">{{ mod.label }}</label>
+                </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-3">Disabling a module will immediately revoke access for all users and API keys in this tenant.</p>
+        </div>
       </div>
 
-      <p
-        v-if="error"
-        class="text-sm text-red-600"
-      >
-        {{ error }}
-      </p>
-
-      <div class="flex justify-end space-x-2">
-        <button
-          class="px-3 py-2 text-sm rounded border hover:bg-gray-50"
-          @click="
-            showForm = false;
-            resetForm();
-          "
-        >
-          Cancel
-        </button>
-        <button
-          class="px-3 py-2 text-sm rounded bg-blue-600  hover:bg-blue-700 disabled:opacity-50"
-          :disabled="saving"
-          @click="saveTenant"
-        >
-          {{ saving ? 'Saving...' : 'Save Tenant' }}
+      <div class="flex justify-end gap-3 pt-4 border-t dark:border-slate-800">
+        <button class="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg dark:text-slate-300 dark:hover:bg-slate-800" @click="showForm = false">Cancel</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm" :disabled="saving" @click="saveTenant">
+            {{ saving ? 'Saving...' : 'Save Tenant' }}
         </button>
       </div>
     </div>

@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles; // Spatie
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles; // Add HasRoles
 
     /**
      * The attributes that are mass assignable.
@@ -23,7 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        // 'role', // role is hanling by Spatie
         'tenant_id',
     ];
 
@@ -52,12 +53,22 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->role === 'super_admin';
+        return $this->hasRole('super_admin');
     }
-
+    
     public function isNotSuperAdmin(): bool
     {
         return !$this->isSuperAdmin();
+    }
+
+    public function isTenantSuperAdmin(): bool
+    {
+        return $this->hasRole('agency_owner');
+    }
+
+    public function isTenantStaff(): bool
+    {
+        return !$this->isTenantSuperAdmin();
     }
 
     public function tenant()

@@ -3,16 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Form;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class FormController extends Controller
 {
+    use AuthorizesRequests; // Laravel 11 may put this in base Controller
+
     public function index(Request $request)
     {
-        if (! $request->user()->tokenCan('forms:read')) {
-            abort(403, 'Access denied: Missing "forms:read" permission');
-        }
+        $this->authorize('viewAny', Form::class);
 
         return Form::orderByDesc('created_at')->get();
     }
@@ -20,15 +21,8 @@ class FormController extends Controller
     public function store(Request $request)
     {
 
-        $user = $request->user();
+        $this->authorize('create', Form::class);
 
-        if (! $user || $user->isSuperAdmin()) {
-            return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
-        }
-
-        if (! $request->user()->tokenCan('forms:write')) {
-            abort(403, 'Access denied: Missing "forms:write" permission');
-        }
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -51,15 +45,8 @@ class FormController extends Controller
 
     public function update(Request $request, Form $form)
     {
-        $user = $request->user();
+        $this->authorize('update', $form);
 
-        if (! $user || $user->isSuperAdmin()) {
-            return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
-        }
-
-        if (! $request->user()->tokenCan('forms:write')) {
-            abort(403, 'Access denied: Missing "forms:write" permission');
-        }
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -77,15 +64,7 @@ class FormController extends Controller
 
     public function destroy(Request $request, Form $form)
     {
-        $user = $request->user();
-
-        if (! $user || $user->isSuperAdmin()) {
-            return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
-        }
-
-        if (! $request->user()->tokenCan('forms:write')) {
-            abort(403, 'Access denied: Missing "forms:write" permission');
-        }
+        $this->authorize('delete', $form);
 
         $form->delete();
 

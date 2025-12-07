@@ -59,6 +59,15 @@ return [
         'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
         'verify_csrf_token' => Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
     ],
+
+
+    'allowed_scopes' => [
+        'leads:view', 'leads:write','leads:update', 'leads:delete',
+        'forms:view', 'forms:write','forms:update', 'forms:delete',
+        'webhooks:view', 'webhooks:write','webhooks:update', 'webhooks:delete',
+        'ai_chats:view', 'ai_chats:write','ai_chats:update', 'ai_chats:delete',
+        'api_keys:view', 'api_keys:write','api_keys:update', 'api_keys:delete'
+    ]
 ];
 
 

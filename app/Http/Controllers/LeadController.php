@@ -7,12 +7,18 @@ use App\Models\TenantSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // Ensure trait exists
 
 class LeadController extends Controller
 {
 
+    use AuthorizesRequests; // Laravel 11 may put this in base Controller
+
     private function getCrmConfig($tenantId)
     {
+        // 3-Layer Check via Policy
+        $this->authorize('viewAny', Lead::class);
+
         $settings = TenantSetting::where('tenant_id', $tenantId)->first();
         
         return $settings->crm_config ?? [
@@ -32,6 +38,10 @@ class LeadController extends Controller
      */
     public function stats(Request $request)
     {
+
+        // 3-Layer Check via Policy
+        $this->authorize('viewAny', Lead::class);
+
         // Use a single aggregate query for performance (1 DB call instead of 4)
         $statsQuery = Lead::query()
             ->selectRaw('count(*) as total')
@@ -58,10 +68,8 @@ class LeadController extends Controller
 
     public function index(Request $request)
     {
-        // Check Permission
-        if (! $request->user()->tokenCan('leads:read')) {
-            abort(403, 'Access denied: Missing "leads:read" permission');
-        }
+        // 3-Layer Check via Policy
+        $this->authorize('viewAny', Lead::class);
 
         $query = Lead::query();
 
@@ -117,9 +125,8 @@ class LeadController extends Controller
     public function show(Lead $lead)
     {
 
-        if (! request()->user()->tokenCan('leads:read')) {
-            abort(403, 'Access denied: Missing "leads:read" permission');
-        }
+        // 3-Layer Check via Policy
+        $this->authorize('view', $lead);
 
         $lead->load(['activities', 'form']);
         
@@ -133,10 +140,8 @@ class LeadController extends Controller
 
     public function update(Request $request, Lead $lead)
     {
-        // ENFORCE WRITE PERMISSION
-        if (! $request->user()->tokenCan('leads:write')) {
-            abort(403, 'Access denied: Missing "leads:write" permission');
-        }
+        // 3-Layer Check via Policy
+        $this->authorize('update', $lead);
 
         $validated = $request->validate([
             'status' => 'sometimes|string',
@@ -158,10 +163,8 @@ class LeadController extends Controller
 
     public function addNote(Request $request, Lead $lead)
     {
-        // ENFORCE WRITE PERMISSION
-        if (! $request->user()->tokenCan('leads:write')) {
-            abort(403, 'Access denied: Missing "leads:write" permission');
-        }
+        // 3-Layer Check via Policy
+        $this->authorize('update', $lead);
 
         $request->validate(['content' => 'required|string']);
 
@@ -179,10 +182,8 @@ class LeadController extends Controller
 
     public function import(Request $request)
     {
-        // ENFORCE WRITE PERMISSION
-        if (! $request->user()->tokenCan('leads:write')) {
-            abort(403, 'Access denied: Missing "leads:write" permission');
-        }
+        // 3-Layer Check via Policy
+        $this->authorize('create', Lead::class);
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',

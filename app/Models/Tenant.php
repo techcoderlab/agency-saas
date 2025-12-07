@@ -14,6 +14,11 @@ class Tenant extends Model
         'name',
         'domain',
         'status',
+        'enabled_modules',
+    ];
+
+    protected $casts = [
+        'enabled_modules' => 'array', 
     ];
 }
 

@@ -135,7 +135,7 @@
                   </div>
                   <div>
                       <label class="block text-xs font-bold text-slate-500 mb-1.5">Authorization Header (Optional)</label>
-                      <input v-model="form.webhook_secret" type="password" placeholder="Bearer sk-..." class="w-full border rounded-lg p-2.5 text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-shadow">
+                      <input v-model="form.webhook_secret" type="password" placeholder="Bearer sk-..." autocomplete="new-password" class="w-full border rounded-lg p-2.5 text-sm dark:bg-slate-900 dark:border-slate-700 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-shadow">
                   </div>
                   <div>
                       <label class="block text-xs font-bold text-slate-500 mb-1.5">Welcome Message</label>

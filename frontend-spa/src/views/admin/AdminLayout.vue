@@ -1,10 +1,16 @@
 <script setup>
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { onMounted, ref } from 'vue'
+import { useApiCache } from '../../composables/useApiCache'; // Adjust path as necessary
+import api from '../../utils/request'
+
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const { fetchDataWithCache } = useApiCache();
+
 
 // Theme Toggling Logic
 const toggleDark = () => {
@@ -28,15 +34,26 @@ const logout = async () => {
   router.push('/login')
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { name: 'Leads', href: '/admin/leads', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-  { name: 'Forms', href: '/admin/forms', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { name: 'Ai Chats', href: '/admin/ai-chats', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
-  { name: 'Webhooks', href: '/admin/webhooks', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-  // API Keys Link Added Here
-  { name: 'API Keys', href: '/admin/api-keys', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11.536 16.464l-1.414 1.414a1 1 0 01-1.414 0l-1.414-1.414a1 1 0 010-1.414l1.414-1.414L15 7zm3 5a1 1 0 11-2 0 1 1 0 012 0z' },
-]
+
+const navigation = ref([
+  { id: 'dashboard', label: 'Dashboard', route: '/admin', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' }
+])
+
+const fetchModules = async () => {
+  // loading.value = true
+  const data = await fetchDataWithCache(
+      'tenant_modules_cache',
+      600000, // ttl => 600000 = 10 mins
+      () => api.get('/tenants/modules')
+    );
+  const mergedArray = [...navigation.value, ...data];
+  navigation.value = mergedArray
+  // loading.value = false
+}
+
+onMounted(fetchModules)
+
+
 </script>
 
 <template>
@@ -49,19 +66,19 @@ const navigation = [
         <nav class="space-y-1 px-3 py-4">
           <RouterLink
             v-for="item in navigation"
-            :key="item.name"
-            :to="item.href"
+            :key="item.label"
+            :to="item.route"
             :class="[
-              route.path === item.href || (item.href !== '/admin' && route.path.startsWith(item.href))
+              route.path === item.route || (item.route !== '/admin' && route.path.startsWith(item.route))
                 ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
                 : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
               'group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors'
             ]"
           >
-            <svg class="mr-3 h-5 w-5 flex-shrink-0" :class="route.path === item.href ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg class="mr-3 h-5 w-5 flex-shrink-0" :class="route.path === item.route ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
             </svg>
-            {{ item.name }}
+            {{ item.label }}
           </RouterLink>
         </nav>
       </div>

@@ -13,7 +13,7 @@ const showPayload = ref(false)
 const payloadForm = ref(null)
 
 const getPublicLink = (id) => {
-  return `${window.location.origin}/public/form/${id}`
+  return `${window.location.origin}/form/${id}`
 }
 
 const buildPayloadExample = (schema) => {

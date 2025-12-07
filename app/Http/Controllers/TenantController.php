@@ -9,6 +9,25 @@ use Illuminate\Http\Response;
 
 class TenantController extends Controller
 {
+
+    public function getModulesForTenant(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        if($user->isNotSuperAdmin()){
+            return response()->json(array_values(array_filter(config('modules.available_modules'), function ($value) use ($user) {
+                return in_array($value['id'], $user->tenant->enabled_modules);
+            })));
+            
+        }
+
+        return response()->json(config('modules.available_modules'));
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -17,7 +36,7 @@ class TenantController extends Controller
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 
-        return Tenant::orderByDesc('id')->get();
+        return response()->json(['tenants' => Tenant::orderByDesc('id')->get(), 'available_modules' => config('modules.available_modules')]);
     }
 
     public function store(Request $request)
@@ -32,14 +51,15 @@ class TenantController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'domain' => ['nullable', 'string', 'max:255', 'unique:tenants,domain'],
             'status' => ['nullable', 'in:active,suspended'],
-            'n8n_webhook_url' => ['nullable', 'url', 'max:2048'],
+            'enabled_modules' => ['array'], // Validate array
+            'enabled_modules.*' => ['string'],
         ]);
 
         $tenant = Tenant::create([
             'name' => $validated['name'],
             'domain' => $validated['domain'] ?? null,
             'status' => $validated['status'] ?? 'active',
-            'n8n_webhook_url' => $validated['n8n_webhook_url'] ?? null,
+            'enabled_modules' => $validated['enabled_modules'] ?? ['leads', 'forms'], // Default
         ]);
 
         return response()->json($tenant, Response::HTTP_CREATED);
@@ -57,13 +77,13 @@ class TenantController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'domain' => ['sometimes', 'nullable', 'string', 'max:255', 'unique:tenants,domain,' . $tenant->id],
             'status' => ['sometimes', 'in:active,suspended'],
-            'n8n_webhook_url' => ['sometimes', 'nullable', 'url', 'max:2048'],
+            'enabled_modules' => ['sometimes', 'array'],
         ]);
 
-        $tenant->fill($validated);
-        $tenant->save();
+        $tenant->update($validated); // Fillable handles JSON
 
         return response()->json($tenant);
+
     }
 
     public function destroy(Request $request, Tenant $tenant)

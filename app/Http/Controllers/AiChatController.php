@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AiChat;
 use App\Models\ChatMessage;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -12,16 +13,20 @@ use Illuminate\Support\Str;
 
 class AiChatController extends Controller
 {
-    // 1. LIST
+    use AuthorizesRequests; // Laravel 11 may put this in base Controller
+
     public function index()
     {
+        $this->authorize('viewAny', AiChat::class);
+
         // Trait automatically filters by tenant_id
         return response()->json(AiChat::latest()->get());
     }
 
-    // 2. CREATE
     public function store(Request $request)
     {
+        $this->authorize('create', AiChat::class);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'webhook_url' => 'required|url',
@@ -33,10 +38,10 @@ class AiChatController extends Controller
         return response()->json($chat, 201);
     }
 
-    // 3. UPDATE
     public function update(Request $request, AiChat $aiChat)
     {
         // Policy authorization check recommended here (e.g., $this->authorize('update', $aiChat))
+        $this->authorize('update', $aiChat);
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -49,19 +54,22 @@ class AiChatController extends Controller
         return response()->json($aiChat);
     }
 
-    // 4. DELETE
     public function destroy(AiChat $aiChat)
     {
+        $this->authorize('delete', $aiChat);
+
         $aiChat->delete();
         return response()->json(['message' => 'Deleted successfully']);
     }
-
 
     /**
      * Get Chat History with Pagination (Cursor-based)
      */
     public function history(Request $request, AiChat $aiChat)
     {
+
+        $this->authorize('view', $aiChat);
+
         $limit = 30; // Strict limit
         $beforeId = $request->input('before_id'); // The cursor
 
@@ -99,12 +107,13 @@ class AiChatController extends Controller
         ]);
     }
 
-
     /**
-     * Check n8n Workflow Status
+     * Check Webhook Status
      */
     public function checkConnection(AiChat $aiChat)
     {
+        $this->authorize('view', $aiChat);
+
         try {
             $http = Http::timeout(3);
     
