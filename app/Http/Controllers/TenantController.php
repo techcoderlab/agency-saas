@@ -36,7 +36,11 @@ class TenantController extends Controller
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 
-        return response()->json(['tenants' => Tenant::orderByDesc('id')->get(), 'available_modules' => config('modules.available_modules')]);
+        // Eager load settings to get crm_config
+        return response()->json([
+            'tenants' => Tenant::with('settings')->orderByDesc('id')->get(), 
+            'available_modules' => config('modules.available_modules')
+        ]);
     }
 
     public function store(Request $request)
@@ -47,22 +51,40 @@ class TenantController extends Controller
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 
+        // 1. Validate Base Fields
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'domain' => ['nullable', 'string', 'max:255', 'unique:tenants,domain'],
             'status' => ['nullable', 'in:active,suspended'],
-            'enabled_modules' => ['array'], // Validate array
+            'enabled_modules' => ['array'], 
             'enabled_modules.*' => ['string'],
+            
+            // 2. Validate CRM Config Structure (Strict)
+            'crm_config' => ['nullable', 'array'],
+            'crm_config.entity_name_singular' => ['required_with:crm_config', 'string'],
+            'crm_config.entity_name_plural' => ['required_with:crm_config', 'string'],
+            'crm_config.statuses' => ['required_with:crm_config', 'array', 'min:1'],
+            'crm_config.statuses.*.slug' => ['required_with:crm_config', 'string', 'distinct'],
+            'crm_config.statuses.*.label' => ['required_with:crm_config', 'string'],
+            'crm_config.statuses.*.color' => ['required_with:crm_config', 'string'],
         ]);
 
         $tenant = Tenant::create([
             'name' => $validated['name'],
             'domain' => $validated['domain'] ?? null,
             'status' => $validated['status'] ?? 'active',
-            'enabled_modules' => $validated['enabled_modules'] ?? ['leads', 'forms'], // Default
+            'enabled_modules' => $validated['enabled_modules'] ?? ['leads', 'forms'], 
         ]);
 
-        return response()->json($tenant, Response::HTTP_CREATED);
+        // Save CRM Config if provided
+        if (isset($validated['crm_config'])) {
+            TenantSetting::create([
+                'tenant_id' => $tenant->id,
+                'crm_config' => $validated['crm_config']
+            ]);
+        }
+
+        return response()->json($tenant->load('settings'), Response::HTTP_CREATED);
     }
 
     public function update(Request $request, Tenant $tenant)
@@ -78,11 +100,28 @@ class TenantController extends Controller
             'domain' => ['sometimes', 'nullable', 'string', 'max:255', 'unique:tenants,domain,' . $tenant->id],
             'status' => ['sometimes', 'in:active,suspended'],
             'enabled_modules' => ['sometimes', 'array'],
+            
+            // Strict Validation for Updates too
+            'crm_config' => ['nullable', 'array'],
+            'crm_config.entity_name_singular' => ['required_with:crm_config', 'string'],
+            'crm_config.entity_name_plural' => ['required_with:crm_config', 'string'],
+            'crm_config.statuses' => ['required_with:crm_config', 'array', 'min:1'],
+            'crm_config.statuses.*.slug' => ['required_with:crm_config', 'string', 'distinct'],
+            'crm_config.statuses.*.label' => ['required_with:crm_config', 'string'],
+            'crm_config.statuses.*.color' => ['required_with:crm_config', 'string'],
         ]);
 
-        $tenant->update($validated); // Fillable handles JSON
+        $tenant->update($validated); 
 
-        return response()->json($tenant);
+        // Update CRM Config if provided
+        if (isset($validated['crm_config'])) {
+            TenantSetting::updateOrCreate(
+                ['tenant_id' => $tenant->id],
+                ['crm_config' => $validated['crm_config']]
+            );
+        }
+
+        return response()->json($tenant->load('settings'));
 
     }
 

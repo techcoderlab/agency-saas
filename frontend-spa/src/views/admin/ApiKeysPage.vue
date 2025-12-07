@@ -37,6 +37,7 @@
         try {
             const { data } = await api.get('/api-keys')
             keys.value = data.keys
+            // console.log(data.permission_groups)
             permissionGroups.value = data.permission_groups
         } catch (e) {
             console.error(e)
@@ -51,7 +52,7 @@
         currentKey.value = null
         form.value = {
             name: '',
-            abilities: ['leads:read'], 
+            abilities: ['leads:view'], 
             expiration_days: 90
         }
         showCreateModal.value = true
@@ -167,8 +168,107 @@
     
     onMounted(fetchKeys)
     </script>
+
+
+<template>
+    <div class="space-y-6">
+      <div class="page-header">
+        <div><h2 class="page-title">API Keys</h2><p class="page-subtitle">Manage access tokens.</p></div>
+        <button @click="openCreateModal" class="btn-primary">+ Create Key</button>
+      </div>
+  
+      <div v-if="loading" class="text-center py-12 text-slate-500">Loading...</div>
+      <div v-else class="table-container">
+          <table class="table">
+              <thead><tr><th>Name</th><th>Scopes</th><th>Status</th>
+                <th>Last Used</th>
+                <th>Created</th><th class="text-right">Actions</th></tr></thead>
+              <tbody>
+                  <tr v-for="key in keys" :key="key.id">
+                      <td><div class="font-bold text-slate-900 dark:text-white">{{ key.name }}</div></td>
+                      <td>
+                          <div class="flex flex-wrap gap-1">
+                              <span v-for="a in key.abilities.slice(0,2)" :key="a" class="badge badge-slate">{{ a }}</span>
+                              <span v-if="key.abilities.length>2" class="text-xs text-slate-400">+{{ key.abilities.length-2 }}</span>
+                          </div>
+                      </td>
+                      <td><span :class="['badge', getExpiryStatus(key).class]">{{ getExpiryStatus(key).label }}</span></td>
+                      <td>{{ key.last_used_at ? new Date(key.last_used_at).toLocaleDateString(): "Never" }}</td>
+                      <td>{{ new Date(key.created_at).toLocaleDateString() }}</td>
+                      <td class="text-right space-x-2">
+                          <button @click="rotateKey(key)" title="Rotate Token" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 text-xs font-bold uppercase tracking-wide"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg></button>
+                          <span class="text-slate-300 dark:text-slate-700">|</span>
+                          <button @click="openEditModal(key)" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs font-bold uppercase tracking-wide">Edit</button>
+                          <span class="text-slate-300 dark:text-slate-700">|</span>
+                          <button @click="revokeKey(key)" class="text-red-600 hover:text-red-800 dark:text-red-400 text-xs font-bold uppercase tracking-wide">Revoke</button>
+                      </td>
+                  </tr>
+              </tbody>
+          </table>
+      </div>
+  
+      <TransitionRoot appear :show="showCreateModal" as="template">
+          <Dialog as="div" @close="showCreateModal=false" class="relative z-50">
+              <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" />
+              <div class="fixed inset-0 overflow-y-auto flex items-center justify-center p-4">
+                  <DialogPanel class="card w-full max-w-2xl flex flex-col max-h-[90vh]">
+                      <div class="card-header">
+                          <DialogTitle class="card-title">{{ isEditing ? 'Edit Key' : 'New Key' }}</DialogTitle>
+                      </div>
+                      <div class="card-body overflow-y-auto space-y-4">
+                          <div class="grid grid-cols-2 gap-4">
+                              <div class="form-group"><label class="form-label">Name</label><input v-model="form.name" class="form-input"></div>
+                              <div class="form-group">
+                                  <label class="form-label">Expiration</label>
+                                  <select v-if="!isEditing" v-model="form.expiration_days" class="form-select">
+                                      <option v-for="o in expiryOptions" :value="o.value">{{ o.label }}</option>
+                                  </select>
+                                  <div v-else class="text-sm mt-2 text-slate-500">Cannot change expiration.</div>
+                              </div>
+                          </div>
+                          <div class="form-group">
+                              <label class="form-label">Permissions</label>
+                              <div class="grid grid-cols-2 gap-4 p-2 border border-slate-100 dark:border-slate-800 rounded-lg max-h-48 overflow-y-auto">
+                                  <div v-for="grp in permissionGroups" :key="grp.name">
+                                      <div class="text-xs font-bold text-slate-900 dark:text-white mb-2">{{ grp.name }}</div>
+                                      <div v-for="sc in grp.scopes" :key="sc.id" class="flex items-center gap-2 mb-1">
+                                          <input type="checkbox" :value="sc.id" v-model="form.abilities" class="rounded border-slate-300 text-slate-900">
+                                          <span class="text-sm text-slate-600 dark:text-slate-300">{{ sc.label }}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <div class="p-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                          <button @click="showCreateModal=false" class="btn-secondary">Cancel</button>
+                          <button @click="saveKey" class="btn-primary" :disabled="processing">Save</button>
+                      </div>
+                  </DialogPanel>
+              </div>
+          </Dialog>
+      </TransitionRoot>
+  
+      <TransitionRoot appear :show="showSuccessModal" as="template">
+          <Dialog as="div" @close="showSuccessModal=false" class="relative z-50">
+              <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" />
+              <div class="fixed inset-0 flex items-center justify-center p-4">
+                  <DialogPanel class="card max-w-md w-full p-6 text-center">
+                      <div class="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div>
+                      <h3 class="text-lg font-bold text-slate-900 dark:text-white">API Key Created</h3>
+                      <p class="text-sm text-slate-500 my-4">Copy this key now. You won't see it again.</p>
+                      <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+                          <code class="text-xs font-mono flex-1 text-slate-800 dark:text-slate-200 break-all">{{ newKeyToken }}</code>
+                          <CopyButton :text="newKeyToken" />
+                      </div>
+                      <button @click="showSuccessModal=false" class="btn-primary w-full mt-6">Done</button>
+                  </DialogPanel>
+              </div>
+          </Dialog>
+      </TransitionRoot>
+    </div>
+  </template>
     
-    <template>
+    <!-- <template>
       <div class="space-y-6">
         <div class="flex items-center justify-between">
           <div>
@@ -367,4 +467,5 @@
             </Dialog>
         </TransitionRoot>
       </div>
-    </template>
+    </template> -->
+

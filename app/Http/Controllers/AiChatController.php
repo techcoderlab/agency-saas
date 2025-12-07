@@ -70,7 +70,7 @@ class AiChatController extends Controller
 
         $this->authorize('view', $aiChat);
 
-        $limit = 30; // Strict limit
+        $limit = 25; // Strict limit
         $beforeId = $request->input('before_id'); // The cursor
 
         // 1. Build Query (Latest messages first)

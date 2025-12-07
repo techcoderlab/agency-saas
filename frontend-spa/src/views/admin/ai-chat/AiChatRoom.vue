@@ -1,8 +1,9 @@
 <template>
     <div class="h-[calc(100vh-100px)] flex flex-col -m-4 sm:-m-8">
-      <div class=" border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between shrink-0 z-10 transition-colors duration-300">
+      
+      <div class="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between z-10 transition-colors duration-300">
         <div class="flex items-center gap-4">
-            <button @click="router.back()" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
+            <button @click="router.back()" class="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
@@ -16,16 +17,16 @@
                   </span>
                   <span v-else class="h-2 w-2 rounded-full bg-red-500" title="Offline"></span>
               </h2>
-              <div class="flex items-center gap-2 text-xs text-slate-500">
+              <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <span v-if="isLoadingMore" class="text-blue-500 animate-pulse">Loading previous messages...</span>
-                <span v-else-if="hasMoreMessages" class="text-slate-400">Scroll up for more</span>
-                <span v-else class="text-slate-400">History loaded</span>
+                <span v-else-if="hasMoreMessages">Scroll up for more history</span>
+                <span v-else>Chat history loaded</span>
               </div>
             </div>
         </div>
       </div>
   
-      <div class="flex-1 relative overflow-hidden flex flex-col transition-colors duration-300">
+      <div class="flex-1 relative overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         <deep-chat
             ref="deepChatRef"
             v-if="chatConfig && styleConfig"
@@ -55,8 +56,8 @@
           
           <div v-else class="flex items-center justify-center h-full">
               <div class="animate-pulse flex flex-col items-center">
-                  <div class="h-12 w-12 bg-slate-200 rounded-full mb-4"></div>
-                  <div class="h-4 w-32 bg-slate-200 rounded"></div>
+                  <div class="h-12 w-12 bg-slate-200 dark:bg-slate-800 rounded-full mb-4"></div>
+                  <div class="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
               </div>
           </div>
       </div>
@@ -86,7 +87,7 @@ const isDark = ref(document.documentElement.classList.contains('dark'));
 let observer = null;
 let scrollContainer = null;
 
-// --- 1. INFINITE SCROLL LOGIC ---
+// --- 1. INFINITE SCROLL LOGIC (Preserved) ---
 const setupScrollListener = () => {
     const element = deepChatRef.value;
     if (!element || !element.shadowRoot) return;
@@ -94,50 +95,32 @@ const setupScrollListener = () => {
     const shadowRoot = element.shadowRoot;
     let scrollRebindTimer = null;
 
-    // Debounced connector
     const connectScroll = () => {
         clearTimeout(scrollRebindTimer);
-
         scrollRebindTimer = setTimeout(() => {
             const newContainer = shadowRoot.querySelector('#messages');
             if (!newContainer) return;
-
-            // Remove old listener if container changed
             if (scrollContainer && scrollContainer !== newContainer) {
                 scrollContainer.removeEventListener('scroll', handleScroll);
             }
-
             scrollContainer = newContainer;
             scrollContainer.addEventListener('scroll', handleScroll);
-
-            console.log("scroll listener attached");
         }, 50);
     };
 
-    // Attach first time
     connectScroll();
-
-    // Re-attach every time DeepChat re-renders the messages list
-    const shadowObserver = new MutationObserver(() => {
-        connectScroll();
-    });
-
+    const shadowObserver = new MutationObserver(() => { connectScroll(); });
     shadowObserver.observe(shadowRoot, { childList: true, subtree: true });
 };
-
 
 let scrollLocked = false;
 let pendingLoad = false;
 
 const handleScroll = async () => {
     if (!scrollContainer || scrollLocked) {
-        // If a load is in progress, mark pending
-        if (scrollContainer && scrollContainer.scrollTop < 50) {
-            pendingLoad = true;
-        }
+        if (scrollContainer && scrollContainer.scrollTop < 50) pendingLoad = true;
         return;
     }
-
     if (scrollContainer.scrollTop < 50 && hasMoreMessages.value && !isLoadingMore.value) {
         await loadMoreHistory();
     }
@@ -145,8 +128,6 @@ const handleScroll = async () => {
 
 async function loadMoreHistory() {
     isLoadingMore.value = true;
-    
-    // 1. Capture current scroll height BEFORE loading new items
     const oldHeight = scrollContainer.scrollHeight;
     const oldTop = scrollContainer.scrollTop;
 
@@ -155,32 +136,26 @@ async function loadMoreHistory() {
             params: { before_id: nextCursor.value }
         });
 
-        // 2. Prepend messages
         if (data.messages.length > 0) {
             history.value = [...data.messages, ...history.value];
             nextCursor.value = data.next_cursor;
             hasMoreMessages.value = data.has_more;
 
-            // 3. RESTORE SCROLL POSITION (The Magic Fix)
-            // Wait for Deep Chat to re-render with new messages
             setTimeout(() => {
                 const newHeight = scrollContainer.scrollHeight;
-                // Jump the scrollbar down by the amount of new content added
                 scrollContainer.scrollTop = newHeight - oldHeight + oldTop;
                 isLoadingMore.value = false;
-            }, 50); // Small buffer for rendering
+            }, 50);
         } else {
-            console.log('finished!')
             isLoadingMore.value = false;
         }
-
     } catch (e) {
         console.error(e);
         isLoadingMore.value = false;
     }
 }
 
-// --- 2. INTERCEPTORS ---
+// --- 2. INTERCEPTORS (Preserved) ---
 const requestInterceptor = (requestDetails) => {
     if (requestDetails.body instanceof FormData) {
         const newForm = new FormData();
@@ -188,20 +163,11 @@ const requestInterceptor = (requestDetails) => {
         const entries = Array.from(requestDetails.body.entries());
         
         entries.forEach(([key, value]) => {
-            if (key === 'files') {
-                newForm.append('files[]', value);
-            } else if (key === 'message1') {
+            if (key === 'files') newForm.append('files[]', value);
+            else if (key === 'message1') {
                 newForm.append(key, value);
-                try {
-                    if (typeof value === 'string') {
-                        const msgs = JSON.parse(value);
-                        // console.log(msgs)
-                        extractedText = msgs.text;
-                    }
-                } catch (e) {}
-            } else {
-                newForm.append(key, value);
-            }
+                try { if (typeof value === 'string') extractedText = JSON.parse(value).text; } catch (e) {}
+            } else newForm.append(key, value);
         });
         if (extractedText) newForm.append('text_content', extractedText);
         requestDetails.body = newForm;
@@ -220,20 +186,15 @@ onMounted(async () => {
         const configRes = await request.get(`/ai-chats`);
         chatConfig.value = configRes.data.find(c => c.id == chatId);
         
-        // Initial Load (Recent 50)
         const { data } = await request.get(`/ai-chats/${chatId}/history`);
-        console.log(data)
         history.value = data.messages;
         nextCursor.value = data.next_cursor;
         hasMoreMessages.value = data.has_more;
 
-        
         const data2  = await request.get(`/ai-chats/${chatId}/status`);        
         connectionStatus.value = data2.data.status;
 
-        // Initialize Scroll Listener after mount
         setTimeout(setupScrollListener, 1000);
-
     } catch (e) { console.error("Error init chat", e); }
 
     observer = new MutationObserver(() => {
@@ -247,7 +208,7 @@ onUnmounted(() => {
     if (scrollContainer) scrollContainer.removeEventListener('scroll', handleScroll);
 });
 
-// --- CONFIGS ---
+// --- 3. CONFIGS & STYLING (Updated for Slate Palette) ---
 const placeholderText = computed(() => 'Type a message...');
 const introMessage = computed(() => 
     (chatConfig.value?.welcome_message && history.value.length === 0) 
@@ -266,14 +227,21 @@ const requestConfig = computed(() => {
 
 const styleConfig = computed(() => {
     const dark = isDark.value;
+    
+    // Exact Tailwind Slate Palette Mapping
     const c = {
-        bg: dark ? '#0B1121' : '#ffffff',
-        inputBg: dark ? '#1E293B' : '#fafafa',
-        text: dark ? '#f1f5f9' : '#0f172a',
-        placeholder: dark ? '#64748b' : '#a1a1aa',
-        border: dark ? '#334155' : '#e4e4e7',
-        userBubble: dark ? '#334155' : '#f4f4f5',
-        aiBubble: dark ? '#020617' : '#ffffff',
+        // Backgrounds
+        bg: dark ? '#020617' : '#f8fafc',       // Slate-950 / Slate-50
+        inputBg: dark ? '#0f172a' : '#ffffff',  // Slate-900 / White
+        
+        // Text & UI
+        text: dark ? '#f8fafc' : '#0f172a',     // Slate-50 / Slate-900
+        placeholder: dark ? '#64748b' : '#94a3b8', // Slate-500 / Slate-400
+        border: dark ? '#1e293b' : '#e2e8f0',   // Slate-800 / Slate-200
+        
+        // Bubbles
+        userBubble: dark ? '#1e293b' : '#f1f5f9', // Slate-800 / Slate-100
+        aiBubble: dark ? '#020617' : '#ffffff',   // Slate-950 / White
     };
 
     return {
@@ -282,46 +250,48 @@ const styleConfig = computed(() => {
             styles: {
                 container: {
                     backgroundColor: c.inputBg,
-                    borderRadius: '10px',
-                    border: `3px solid ${c.border}`,
-                    maxWidth: '760px',
-                    padding: '12px 18px',
-                    boxShadow: dark ? '0 0 15px rgba(0,0,0,0.2)' : '0 4px 18px rgba(0,0,0,0.06)',
+                    borderRadius: '12px',
+                    border: `1px solid ${c.border}`,
+                    maxWidth: '800px',
+                    padding: '10px 16px',
+                    boxShadow: dark ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                     transition: 'all 0.3s ease',
                 },
-                text: { color: c.text, fontSize: '1rem' }
+                text: { color: c.text, fontSize: '0.95rem' }
             }
         },
         submitButtonStyles: {
             submit: {
                 container: {
-                    default: { backgroundColor: dark ? '#ffffff' : '#18181b',  borderRadius: '50%', width: '34px', height: '34px', margin: '12px', transition: 'transform 0.2s' },
-                    hover: { transform: 'scale(1.08)' },
-                    click: { transform: 'scale(0.92)' }
+                    default: { backgroundColor: dark ? '#ffffff' : '#0f172a',  borderRadius: '8px', width: '34px', height: '34px', margin: '10px', transition: 'transform 0.2s' },
+                    hover: { transform: 'scale(1.05)', opacity: '0.9' },
+                    click: { transform: 'scale(0.95)' }
                 },
-                svg: { styles: { default: { color: dark ? '#18181b' : '#ffffff' } } }
+                svg: { styles: { default: { color: dark ? '#0f172a' : '#ffffff', fontSize: '0.9rem' } } }
             }
         },
         attachmentButtonStyle: {
             styles: {
                 default: {
-                    filter: dark ? 'brightness(0) saturate(100%) invert(90%)' : 'brightness(0) saturate(100%) invert(30%)',          
-                    margin: '12px',
-                    opacity: '0.9'
-                }
+                    filter: dark ? 'invert(1) brightness(2)' : 'none',          
+                    margin: '10px',
+                    opacity: '0.6',
+                    transition: 'opacity 0.2s'
+                },
+                hover: { opacity: '1' }
             }
         },
         messageStyles: {
             default: {
-                shared: { bubble: { borderRadius: '15px', padding: '14px 20px', fontSize: '1rem', lineHeight: '1.6', marginTop: '30px'} },
-                user: { bubble: { backgroundColor: c.userBubble, color: c.text} },
+                shared: { bubble: { borderRadius: '12px', padding: '12px 16px', fontSize: '0.95rem', lineHeight: '1.6', marginTop: '24px'} },
+                user: { bubble: { backgroundColor: c.userBubble, color: c.text } },
                 ai: { bubble: { backgroundColor: c.aiBubble, color: c.text, border: `1px solid ${c.border}` } }
             }
         },
         auxiliaryStyle: `
-            #messages { max-width: 65%; margin: 0 auto; padding-bottom: 220px; }
-            ::-webkit-scrollbar { width: 6px; background-color: transparent }
-            ::-webkit-scrollbar-thumb { background: ${dark ? '#334155' : '#c7c7d1'}; border-radius: 10px; }
+            #messages {width:100%; margin: 0 auto; padding-bottom: 200px; }
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-thumb { background: ${dark ? '#334155' : '#cbd5e1'}; borderRadius: 4px; }
         `
     };
 });

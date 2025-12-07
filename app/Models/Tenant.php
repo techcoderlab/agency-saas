@@ -20,6 +20,11 @@ class Tenant extends Model
     protected $casts = [
         'enabled_modules' => 'array', 
     ];
+    
+    public function settings()
+    {
+        return $this->hasOne(TenantSetting::class);
+    }
 }
 
 

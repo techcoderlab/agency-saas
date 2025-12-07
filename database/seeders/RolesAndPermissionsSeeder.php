@@ -38,7 +38,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view ai_chats',
             'write ai_chats',
             'update ai_chats',
-            'delete ai-chats',
+            'delete ai_chats',
             
             // API Keys
             'view api_keys',

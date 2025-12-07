@@ -15,6 +15,7 @@ const successMessage = ref('')
 const errorMessage = ref('')
 const fieldErrors = ref({})
 const showEmbed = ref(false)
+const renderer = ref(null)
 
 const fetchForm = async () => {
   loading.value = true
@@ -40,6 +41,16 @@ const submit = async () => {
   successMessage.value = ''
   errorMessage.value = ''
   fieldErrors.value = {}
+
+  // 🔥 Trigger renderer internal validation FIRST
+  renderer.value?.runValidation()
+
+  // If there are any client-side validation errors, stop now
+  if (Object.keys(renderer.value?.validationErrors || {}).length > 0) {
+    submitting.value = false
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
 
   if (form.value?.schema) {
     try {
@@ -144,6 +155,7 @@ onMounted(fetchForm)
 
          <div class="p-8 space-y-6">
             <PublicFormRenderer
+              ref="renderer"
               v-model="values"
               :schema="form.schema"
               :errors="fieldErrors"

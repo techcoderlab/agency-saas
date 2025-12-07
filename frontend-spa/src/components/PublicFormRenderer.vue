@@ -135,6 +135,12 @@ const handleCheckboxGroup = (field, optionValue, checked) => {
 // -----------------------------
 watch(() => props.modelValue, runValidation, { deep: true })
 
+// expose method so parent can call it
+defineExpose({
+  runValidation,
+  validationErrors
+})
+
 </script>
 
 <template>
