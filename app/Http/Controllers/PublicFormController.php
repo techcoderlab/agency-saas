@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\DispatchWebhookBatchJob;
 use App\Jobs\SendToN8NJob;
 use App\Models\Form;
 use App\Models\Lead;
+use App\Models\Webhook;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class PublicFormController extends Controller
 {
@@ -56,7 +59,17 @@ class PublicFormController extends Controller
         // If you keep this line, you get two webhooks. 
         // RECOMMENDATION: Remove this manual dispatch and let LeadObserver handle it.
         
-        // DispatchWebhookJob::dispatch($lead); 
+        $legacy = new Webhook([
+            'url' => $lead->form->webhook_url,
+            'secret' => $lead->form->webhook_secret,
+            'is_active' => true
+        ]);
+
+        DispatchWebhookBatchJob::dispatch(
+            data: Arr::only($lead->toArray(), ['id','payload','source','temperature','status','meta_data']),
+            webhooks: collect([$legacy]),
+            event: 'form.submission'
+        );
 
         return response()->json([
             'message' => 'Submitted successfully.',
