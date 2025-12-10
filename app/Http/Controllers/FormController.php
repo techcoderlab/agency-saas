@@ -14,8 +14,9 @@ class FormController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', Form::class);
-
-        return Form::orderByDesc('created_at')->get();
+        return Form::with([
+            'webhooks' => fn($hooks) => $hooks->select('id', 'form_id','name','url','is_active'),
+        ])->orderByDesc('created_at')->get();
     }
 
     public function store(Request $request)
@@ -31,6 +32,10 @@ class FormController extends Controller
             'webhook_secret' => ['nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        /* Assign explicitly null values to stop preventing user values as webhook functionality from Froms are disabled for now */
+        $validated['webhook_url'] = null;
+        $validated['webhook_secret'] = null;
 
         $form = Form::create([
             'name' => $validated['name'],
@@ -55,6 +60,10 @@ class FormController extends Controller
             'webhook_secret' => ['sometimes','nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        /* Assign explicitly null values to stop preventing user values as webhook functionality from Froms are disabled for now */
+        $validated['webhook_url'] = null;
+        $validated['webhook_secret'] = null;
 
         $form->fill($validated);
         $form->save();

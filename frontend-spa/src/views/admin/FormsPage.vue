@@ -6,7 +6,7 @@
   import CopyButton from '../../components/ui/CopyButton.vue'
   
   const forms = ref([]); const loading = ref(false); const showBuilder = ref(false); const editingForm = ref(null); const showPayload = ref(false); const payloadForm = ref(null);
-  const fetchForms = async () => { loading.value=true; try { const {data}=await api.get('/forms'); forms.value=data } catch(e){} finally{loading.value=false} }
+  const fetchForms = async () => { loading.value=true; try { const {data}=await api.get('/forms'); forms.value=data; } catch(e){} finally{loading.value=false} }
   const editForm = (f) => { editingForm.value=f; showBuilder.value=true }
   const newForm = () => { editingForm.value=null; showBuilder.value=true }
   const deleteForm = async (f) => { if(!confirm(`Delete ${f.name}?`))return; await api.delete(`/forms/${f.id}`); fetchForms() }
@@ -34,7 +34,7 @@
         
         <div v-else class="table-container">
           <table class="table">
-              <thead><tr><th>Details</th><th>Status</th><th>Webhook</th><th class="text-right">Actions</th></tr></thead>
+              <thead><tr><th>Details</th><th>Status</th><th>Webhooks</th><th class="text-right">Actions</th></tr></thead>
               <tbody>
                   <tr v-for="form in forms" :key="form.id">
                       <td>
@@ -45,8 +45,9 @@
                           <span :class="['badge', form.is_active ? 'badge-green' : 'badge-slate']">{{ form.is_active ? 'Active' : 'Inactive' }}</span>
                       </td>
                       <td>
-                          <div v-if="form.webhook_url" class="flex gap-2 items-center"><span class="text-xs font-mono text-slate-500 truncate max-w-[200px]">{{ form.webhook_url }}</span></div>
-                          <span v-else class="text-xs text-slate-400 italic">None</span>
+                        <!-- ({{ form.webhooks.filter( wh => wh.is_active === true).length ?? '0' }} Active) -->
+                          <div v-if="form.webhooks" class="flex gap-2 items-center"><span class="text-xs font-mono text-slate-500 truncate max-w-[200px]">{{ form.webhooks.length ?? '0' }} Linked</span></div>
+                          <span v-else class="text-xs text-slate-400 italic">0 Linked</span>
                       </td>
                       <td>
                         <div class="flex justify-end">

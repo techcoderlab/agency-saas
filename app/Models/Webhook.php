@@ -23,4 +23,9 @@ class Webhook extends Model
         'events' => 'array',
         'is_active' => 'boolean'
     ];
+
+    public function form()
+    {
+        return $this->belongsTo(Form::class);
+    }
 }

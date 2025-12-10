@@ -187,7 +187,7 @@ class LeadController extends Controller
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:2048',
-            'form_id' => 'nullable|exists:forms,id'
+            'form_id' => 'sometimes|nullable|exists:forms,id'
         ]);
 
         $file = $request->file('file');
@@ -207,7 +207,9 @@ class LeadController extends Controller
 
                 $data = array_combine($header, $row);
                 
-                Lead::create([
+                
+
+                $lead = new Lead([
                     'tenant_id' => $request->user()->tenant_id, 
                     'form_id' => $request->form_id ?? null,
                     'source' => 'csv',
@@ -219,6 +221,15 @@ class LeadController extends Controller
                         'imported_at' => now()->toIso8601String()
                     ]
                 ]);
+
+                // Fix for webhook looping:
+                // External systems updating the lead can pass 'suppress_webhooks=true'
+                // to avoid triggering the webhook they just reacted to.
+                if ($request->boolean('suppress_webhooks')) {
+                    $lead->suppress_webhooks = true;
+                }
+
+                $lead->save();
                 
                 $importedCount++;
             }

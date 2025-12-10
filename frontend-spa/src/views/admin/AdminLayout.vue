@@ -30,7 +30,7 @@
     if(data) {
        const mergedArray = [...navigation.value, ...data];
        navigation.value = mergedArray
-       console.log(mergedArray)
+      //  console.log(mergedArray)
     }
   }
   

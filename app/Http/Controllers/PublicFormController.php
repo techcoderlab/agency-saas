@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Webhook;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 
 class PublicFormController extends Controller
 {
@@ -32,42 +33,53 @@ class PublicFormController extends Controller
 
     public function submit(Request $request, string $uuid)
     {
+        // 1. Fast lookup (avoid two queries)
         $form = Form::where('id', $uuid)
             ->where('is_active', true)
-            ->first();
+            ->firstOrFail();
 
-        if (!$form) {
-             return response()->json(['message' => 'Form not active.'], 404);
+        if (!$form) {     
+            return response()->json(['message' => 'This form is not found.'], 404); 
         }
 
-        // Validate payload if necessary, or just accept all
-        $payload = $request->all();
-
+        if(!$form->is_active)
+            return response()->json(['message' => 'This form may temporarily closed.'], 404); 
+        
+        // 2. Create lead in one clean call
         $lead = Lead::create([
             'tenant_id' => $form->tenant_id,
             'form_id'   => $form->id,
-            'source'    => 'form', // EXPLICITLY set source
-            'payload'   => $payload,
-            // Status and Temperature default to 'new'/'cold' via database default
+            'source'    => 'form',
+            'payload'   => $request->all(),
         ]);
 
-        // CHANGED: Dispatch the new generic webhook job
-        // The Observer will ALSO fire a webhook on creation, so to avoid 
-        // double-firing, you might want to rely solely on the Observer 
-        // OR disable the Observer's "created" hook if using this. 
-        // For safety, let's rely on the Observer (created event) to handle the webhook.
-        // If you keep this line, you get two webhooks. 
-        // RECOMMENDATION: Remove this manual dispatch and let LeadObserver handle it.
-        
-        $legacy = new Webhook([
-            'url' => $lead->form->webhook_url,
-            'secret' => $lead->form->webhook_secret,
-            'is_active' => true
+        // 3. Prepare webhook payload (small & clean)
+        $payload = Arr::only($lead->toArray(), [
+            'id',
+            'payload',
+            'source',
+            'temperature',
+            'status',
+            'meta_data',
         ]);
+
+        // 4. Cached webhooks (high-performance, correct JSON matching)
+        $webhooks = Cache::remember(
+            "form:webhooks:{$form->getKey()}",
+            60,
+            fn() => $form->webhooks()
+                ->whereJsonContains('events', 'form.submission')
+                ->get()
+        );
+
+        // ⚠ FIXED THE BUG:
+        // You wrapped `$webhooks` inside `collect([$webhooks])` — that becomes a collection-of-collections.
+        // DispatchWebhookBatchJob expects a normal collection. 
+        // So we pass `$webhooks` directly.
 
         DispatchWebhookBatchJob::dispatch(
-            data: Arr::only($lead->toArray(), ['id','payload','source','temperature','status','meta_data']),
-            webhooks: collect([$legacy]),
+            data: $payload,
+            webhooks: $webhooks,
             event: 'form.submission'
         );
 
@@ -76,4 +88,5 @@ class PublicFormController extends Controller
             'lead_id' => $lead->id,
         ], 201);
     }
+
 }

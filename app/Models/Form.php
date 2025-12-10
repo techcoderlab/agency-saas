@@ -30,6 +30,11 @@ class Form extends Model
         'schema' => 'array',
         'is_active' => 'boolean',
     ];
+
+    public function webhooks()
+    {
+        return $this->hasMany(Webhook::class,'form_id');
+    }
 }
 
 

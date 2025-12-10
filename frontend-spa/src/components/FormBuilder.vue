@@ -136,7 +136,7 @@ const save = async () => {
                 />
             </div>
 
-            <div>
+            <!-- <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-2">
                     Webhook URL <span class="text-[10px] font-normal text-slate-400 normal-case ml-1">(Optional Override)</span>
                 </label>
@@ -160,7 +160,7 @@ const save = async () => {
                     autocomplete="new-password"
                 />
                 <p class="text-xs text-slate-500 mt-2">Signs requests with a `X-Webhook-Signature` header if set.</p>
-            </div>
+            </div> -->
 
             <div class="md:col-span-2 pt-2">
                 <label class="inline-flex items-center cursor-pointer">

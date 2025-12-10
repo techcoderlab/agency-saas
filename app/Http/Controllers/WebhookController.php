@@ -6,6 +6,7 @@ use App\Models\Webhook;
 use Illuminate\Http\Request;
 use App\Traits\BelongsToTenant; // Assuming this trait handles tenant scoping
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Validation\Rule;
 
 class WebhookController extends Controller
 {
@@ -17,6 +18,7 @@ class WebhookController extends Controller
 
         // Fetch webhooks for current tenant
         return Webhook::where('tenant_id', $request->user()->tenant_id)
+            ->with('form:id,name') // Eager load form name if relation exists
             ->orderBy('created_at', 'desc')
             ->get();
     }
@@ -29,6 +31,14 @@ class WebhookController extends Controller
             'name' => 'nullable|string|max:255',
             'url' => 'required|url',
             'secret' => 'nullable|string|max:255',
+            // Validate form_id exists and belongs to the current tenant
+            'form_id' => [
+                'nullable', 
+                'string', 
+                Rule::exists('forms', 'id')->where(function ($query) use ($request) {
+                    return $query->where('tenant_id', $request->user()->tenant_id);
+                })
+            ],
             'events' => 'required|array',
             'events.*' => 'string'
         ]);
@@ -36,6 +46,9 @@ class WebhookController extends Controller
         $webhook = new Webhook($validated);
         $webhook->tenant_id = $request->user()->tenant_id;
         $webhook->is_active = true;
+        // form_id is fillable via $validated if added to $fillable in Model, 
+        // but explicitly setting it guarantees it saves if $guarded is used.
+        $webhook->form_id = $validated['form_id'] ?? null;
         $webhook->save();
 
         return response()->json($webhook, 201);
