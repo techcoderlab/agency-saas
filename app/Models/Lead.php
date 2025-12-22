@@ -20,6 +20,7 @@ class Lead extends Model
         'tenant_id',
         'form_id',
         'source',
+        'insert_method',
         'temperature',
         'status',
         'payload',

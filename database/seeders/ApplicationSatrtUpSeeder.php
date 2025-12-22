@@ -54,6 +54,7 @@ class ApplicationSatrtUpSeeder extends Seeder
             [
                 'name' => 'Demo Agency',
                 'status' => 'active',
+                'enabled_modules' => '["leads","forms","webhooks","api_keys","ai_chats"]',
             ]
         );
 

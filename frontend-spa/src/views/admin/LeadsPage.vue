@@ -8,6 +8,14 @@
     const loading = ref(false)
     const viewMode = ref('board') // 'list' | 'board'
     
+
+// --- Pagination State ---
+const pagination = ref({
+    current_page: 1,
+    last_page: 1,
+    total: 0
+})
+
     // Default Config (Overwritten by Backend)
     const crmConfig = ref({
         entity_name_singular: 'Lead',
@@ -80,55 +88,177 @@
     
         return colorMap[color] || colorMap['gray']
     }
+
+
+
+// const selectedLeadIds = ref([])
+
+// // Toggle individual selection
+// const toggleSelection = (id) => {
+//     const index = selectedLeadIds.value.indexOf(id)
+//     if (index > -1) {
+//         selectedLeadIds.value.splice(index, 1)
+//     } else {
+//         selectedLeadIds.value.push(id)
+//     }
+// }
+
+// --- Selection State ---
+const selectedLeadIds = ref([]);
+const isSelecting = computed(() => selectedLeadIds.value.length === leads.value.length && leads.value.length > 0);
+const isLeadSelected = (id) => selectedLeadIds.value.includes(id);
+
+// --- 1. SMART TOGGLE SELECT ALL ---
+const toggleSelectAll = () => {
+    // If everything is already selected, clear it.
     
-    const fetchData = async () => {
-        loading.value = true
-        try {
-            const statsRes = await api.get('/leads/stats')
-            
-            // Handle stats structure
-            if (statsRes.data.stats) {
-                stats.value = statsRes.data.stats
-            } else {
-                stats.value = statsRes.data
-            }
-            
-            // Apply Backend Config
-            if (statsRes.data.config) {
-                crmConfig.value = statsRes.data.config
-            }
-    
-            const params = { ...filters }
-            Object.keys(params).forEach(key => {
-                if (params[key] === '' || params[key] === 'all') delete params[key]
-            })
-            
-            if (viewMode.value === 'board') params.per_page = 100
-    
-            const leadsRes = await api.get('/leads', { params })
-            leads.value = leadsRes.data.data
-        } catch (e) {
-            console.error(e)
-        } finally {
-            loading.value = false
-        }
+    if (selectedLeadIds.value.length === leads.value.length && leads.value.length > 0) {
+        selectedLeadIds.value = [];
+    } else {
+        // Select all leads currently in the list
+        selectedLeadIds.value = leads.value.map(lead => lead.id);
     }
-    
-    watch(viewMode, fetchData)
-    let searchTimer = null
-    watch(filters, (newVal, oldVal) => {
-        if (newVal.search !== oldVal.search) {
-            clearTimeout(searchTimer)
-            searchTimer = setTimeout(fetchData, 500)
-        } else {
-            fetchData()
+};
+
+// --- 2. SELECTION TOGGLE ---
+const toggleLeadSelection = (id) => {
+    const index = selectedLeadIds.value.indexOf(id);
+    if (index > -1) {
+        selectedLeadIds.value.splice(index, 1);
+    } else {
+        selectedLeadIds.value.push(id);
+    }
+};
+
+
+
+// --- Reusable Bulk Action Handler ---
+// This is organized so you can easily add 'delete' or 'update' later.
+const handleBulkAction = async (actionType) => {
+    if (selectedLeadIds.value.length === 0) return;
+
+    loading.value = true;
+    try {
+        if (actionType === 'export') {
+            await bulkExport();
+        } else if (actionType === 'delete') {
+            // Future logic: await api.post('/leads/bulk-delete', { ids: selectedLeadIds.value });
+            console.log("Bulk delete triggered for:", selectedLeadIds.value);
+        } else if (actionType === 'status_update') {
+            // Future logic: await api.post('/leads/bulk-update', { ids: selectedLeadIds.value, status: 'contacted' });
         }
-    }, { deep: true })
+        
+        // Always clear selection after a successful non-export action
+        if (actionType !== 'export') selectedLeadIds.value = [];
+        
+    } catch (e) {
+        console.error(`Bulk ${actionType} failed`, e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+// --- 3. BULK EXPORT (Optimized for Hostinger) ---
+const bulkExport = async () => {
+    if (selectedLeadIds.value.length === 0) return;
+    loading.value = true;
+    try {
+        const response = await api.post('/leads/export', { 
+            ids: selectedLeadIds.value 
+        }, { responseType: 'blob' });
+        
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `leads_export_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error("Export failed", e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+// Import Trigger (Hidden Input)
+const fileInput = ref(null)
+const triggerImport = () => fileInput.value.click()
+const handleImport = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+    
+    const formData = new FormData()
+    formData.append('from', 'system_inserted')
+    formData.append('file', file)
+    
+    try {
+        loading.value = true
+        await api.post('/leads/import', formData)
+        fetchData(1) // Refresh
+    } catch (e) {
+        alert("Import failed")
+    } finally {
+        loading.value = false
+        event.target.value = '' // Clear input
+    }
+}
+    
+    // const fetchData = async () => {
+    //     loading.value = true
+    //     try {
+    //         const statsRes = await api.get('/leads/stats')
+            
+    //         // Handle stats structure
+    //         if (statsRes.data.stats) {
+    //             stats.value = statsRes.data.stats
+    //         } else {
+    //             stats.value = statsRes.data
+    //         }
+            
+    //         // Apply Backend Config
+    //         if (statsRes.data.config) {
+    //             crmConfig.value = statsRes.data.config
+    //         }
+    
+    //         const params = { ...filters }
+    //         Object.keys(params).forEach(key => {
+    //             if (params[key] === '' || params[key] === 'all') delete params[key]
+    //         })
+            
+    //         if (viewMode.value === 'board') params.per_page = 100
+    
+    //         const leadsRes = await api.get('/leads', { params })
+    //         leads.value = leadsRes.data.data
+    //         console.log(leads.value.length)
+    //     } catch (e) {
+    //         console.error(e)
+    //     } finally {
+    //         loading.value = false
+    //     }
+    // }
+    
+    // watch(viewMode, fetchData)
+    // let searchTimer = null
+    // watch(filters, (newVal, oldVal) => {
+    //     if (newVal.search !== oldVal.search) {
+    //         clearTimeout(searchTimer)
+    //         searchTimer = setTimeout(fetchData, 500)
+    //     } else {
+    //         fetchData()
+    //     }
+    // }, { deep: true })
     
     const viewLead = (lead) => { activeLead.value = lead; showLead.value = true }
     const closeLead = () => { showLead.value = false; setTimeout(() => activeLead.value = null, 200) }
     const getTempColor = (temp) => {
         const map = { cold: 'text-blue-500', warm: 'text-orange-500', hot: 'text-red-600 font-bold' }
+        return map[temp] || 'text-gray-500'
+    }
+    const getTempBadgeColor = (temp) => {
+        const map = { cold: 'bg-blue-400/10 text-blue-400 inset-ring-blue-500/20', warm: 'bg-orange-400/10 text-orange-400 inset-ring-orange-500/20', hot: 'bg-red-400/10 text-red-400 inset-ring-red-500/20' }
         return map[temp] || 'text-gray-500'
     }
     const clearFilters = () => {
@@ -138,14 +268,71 @@
     const openLead = (lead) => {
         router.push({ name: 'lead-details', params: { id: lead.id } })
     }
+
+    // --- 1. PROPER DEBOUNCING LOGIC ---
+    let searchTimer = null;
+
+    const fetchData = async (page = 1) => {
+        loading.value = true
+        try {
+            const statsRes = await api.get('/leads/stats')
+            stats.value = statsRes.data.stats || statsRes.data
+            if (statsRes.data.config) crmConfig.value = statsRes.data.config
+
+            const params = { ...filters, page } // Pass the page number
+            Object.keys(params).forEach(key => {
+                if (params[key] === '' || params[key] === 'all') delete params[key]
+            })
+            
+            // Kanban usually needs a higher limit to look full
+            if (viewMode.value === 'board') params.per_page = 50 
+
+            const leadsRes = await api.get('/leads', { params })
+            
+            // For Kanban, we usually want to Append data if loading more, 
+            // but for List view, we Replace it.
+            if (page > 1 && viewMode.value === 'board') {
+                leads.value = [...leads.value, ...leadsRes.data.data]
+            } else {
+                leads.value = leadsRes.data.data
+            }
+
+            pagination.value = {
+                current_page: leadsRes.data.current_page,
+                last_page: leadsRes.data.last_page,
+                total: leadsRes.data.total
+            }
+        } catch (e) {
+            console.error(e)
+        } finally {
+            loading.value = false
+        }
+    }
+
+    // Watch filters with Debounce only for search
+    watch(() => filters.search, () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => fetchData(1), 500); // 500ms delay
+    });
+
+    // Watch other filters (Immediate fetch)
+    watch([() => filters.status, () => filters.temperature, () => filters.source, () => filters.date_from, () => filters.date_to, viewMode], () => {
+        fetchData(1);
+    });
+
+    const loadMore = () => {
+        if (pagination.value.current_page < pagination.value.last_page) {
+            fetchData(pagination.value.current_page + 1);
+        }
+    }
     
-    onMounted(fetchData)
+    onMounted(() => fetchData(1))
     </script>
     
     <template>
       <div class="space-y-6">
         
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total {{ crmConfig.entity_name_plural }}</span>
                 <div class="flex items-baseline gap-2 mt-1">
@@ -172,7 +359,7 @@
                     <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.conversion_rate }}</span>
                 </div>
             </div>
-        </div>
+        </div> -->
     
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -189,6 +376,32 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
                  </button>
             </div>
+
+            <!-- <div class="flex items-center gap-3"> -->
+            <button @click="triggerImport" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white dark:bg-slate-950 border dark:border-slate-800 rounded-lg hover:bg-slate-50">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                Import
+            </button>
+
+            <button 
+                @click="toggleSelectAll" 
+                :class="[
+                    'inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg border transition-all duration-300',
+                    isSelecting 
+                        ? 'bg-indigo-600 text-white border-indigo-600' 
+                        : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                ]"
+            >
+                <svg v-if="isSelecting" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+
+                {{ isSelecting ? 'Deselect All' : 'Select All' }}
+            </button>
+            <!-- </div> -->
     
             <button @click="fetchData" class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium dark:text-slate-200 bg-white dark:bg-slate-950 border dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -227,9 +440,9 @@
                     <label class="block text-xs font-medium text-slate-500 mb-1">Source</label>
                     <select v-model="filters.source" class="block w-full py-1.5 px-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg dark:bg-slate-900 dark:text-slate-200">
                         <option value="all">All Sources</option>
-                        <option value="form">Form Submission</option>
-                        <option value="csv">CSV Import</option>
-                        <option value="manual">Manual Entry</option>
+                        <!-- <option value="form">Form Submission</option>
+                        <option value="csv_import">CSV Import</option>
+                        <option value="manual">Manual Entry</option> -->
                     </select>
                 </div>
                 <div>
@@ -250,12 +463,19 @@
             </div>
         </div>
     
-        <div v-if="viewMode === 'board'" class="overflow-x-auto pb-4">
-            <div class="flex gap-6 min-w-full">
+        <div v-if="viewMode === 'board'" class="overflow-x-auto pb-4 custom-scrollbar">
+            <div>
+                <p class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                    {{ leads?.length }} Latest {{ crmConfig.entity_name_plural }}
+                    <span class="text-sm text-slate-500 dark:text-slate-400 mt-1">(Press "Load More {{ crmConfig.entity_name_plural }}" button below to see more)</span>
+                </p>  
+            </div>
+
+            <div class="flex gap-6 min-w-full mt-5">
                 <div 
                     v-for="status in crmConfig.statuses" 
                     :key="status.slug" 
-                    class="min-w-[300px] w-[300px] bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col"
+                    class="min-w-[300px] w-full bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col"
                 >
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold text-slate-700 dark:text-slate-200">{{ status.label }}</h3>
@@ -264,20 +484,59 @@
                         </span>
                     </div>
                     
-                    <div class="space-y-3 flex-1 overflow-y-auto max-h-[70vh]">
+                    <div class="space-y-3 flex-1 overflow-y-auto max-h-[70vh] custom-scrollbar">
                         <div 
                             v-for="lead in kanbanColumns[status.slug]" 
                             :key="lead.id"
-                            @click="openLead(lead)"
-                            class="bg-white dark:bg-slate-950 px-4 py-3 rounded-lg shadow-sm border border-l-4 cursor-pointer hover:shadow-md transition-all"
-                            :class="getStatusColor(status.slug)"
+                            class="relative group bg-white dark:bg-slate-950 px-4 py-3 rounded-xl border-2 transition-all select-none cursor-pointer"
+                            :class="[
+                                isLeadSelected(lead.id) 
+                                    ? 'border-indigo-500 bg-indigo-50/20 shadow-md ring-2 ring-indigo-500/5' 
+                                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                            ]"
+                            @click.self="openLead(lead)" 
                         >
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="font-mono text-xs opacity-60 text-slate-900 dark:text-white">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
-                                <span :class="['w-3 h-3 rounded-full', lead.temperature === 'hot' ? 'bg-red-500 animate-pulse' : 'bg-slate-950']"></span>
+                            
+                            <div 
+                                @click.stop="toggleLeadSelection(lead.id)"
+                                class="absolute bottom-2 right-2 z-20 transition-all duration-200"
+                                :class="[
+                                    isLeadSelected(lead.id) 
+                                        ? 'opacity-100 scale-110' 
+                                        : 'opacity-0 group-hover:opacity-100 scale-100'
+                                ]"
+                            >
+                                <div 
+                                    class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors"
+                                    :class="isLeadSelected(lead.id) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'"
+                                >
+                                    <!-- <svg v-if="isLeadSelected(lead.id)" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7" />
+                                    </svg> -->
+
+                                    <svg v-if="isLeadSelected(lead.id)" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    <svg v-else class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div class="font-medium text-sm truncate text-slate-900 dark:text-white">
-                                {{ lead.payload?.email || 'No Email' }}
+
+                            <div @click="openLead(lead)" class="mt-2 z-10 ">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">From {{ lead.source }}</span>
+                                    <span :class="['w-2 h-2 rounded-full', lead.temperature === 'hot' ? 'bg-red-500 animate-pulse' : 'bg-slate-300']"></span>
+                                </div>
+                                <div class="font-bold text-sm text-slate-900 dark:text-white truncate">
+                                    {{ lead.payload?.email || 'No Email' }}
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-baseline mt-1">
+                                <button @click="viewLead(lead)" class="font-bold text-[12px] text-blue-500 z-50">View</button>
+                                <div class="text-[10px] text-slate-500 mt-1">
+                                    {{ new Date(lead.created_at).toLocaleDateString() }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -293,6 +552,14 @@
                      </div>
                 </div>
             </div>
+            <div v-if="viewMode === 'board' && pagination.current_page < pagination.last_page" class="mt-6 flex justify-center">
+                    <button 
+                        @click="loadMore" 
+                        class="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-sm text-sm font-medium hover:bg-slate-50"
+                    >
+                        {{ loading ? 'Loading...' : "Load More "+ crmConfig.entity_name_plural }}
+                    </button>
+            </div>
         </div>
     
         <div v-else class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
@@ -300,6 +567,7 @@
             <table class="w-full text-left text-sm">
               <thead class="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
+                  <th class="px-6 py-4"></th>
                   <th class="px-6 py-4">ID</th>
                   <th class="px-6 py-4">{{ crmConfig.entity_name_singular }}</th>
                   <th class="px-6 py-4">Status</th>
@@ -309,9 +577,18 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-                <tr v-for="lead in leads" :key="lead.id" class="">
+                <tr v-for="lead in leads" :key="lead.id" :class="isLeadSelected(lead.id) ? 'bg-indigo-50/30' : ''">
+                    <td class="px-6 py-4">
+                        <button @click="toggleLeadSelection(lead.id)" :class="isLeadSelected(lead.id) ? 'text-indigo-600' : 'text-slate-300'">
+                            <svg v-if="isLeadSelected(lead.id)" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2" /></svg>
+                        </button>
+                    </td>
                    <td class="px-6 py-4 font-mono text-xs">{{ lead.id }}</td>
-                   <td class="px-6 py-4">{{ lead.payload?.email || 'No Email' }}</td>
+                   <td class="px-6 py-4">
+                    <p>{{ 'From ' + lead.source || 'Undefined' }}</p>
+                    <button @click="viewLead(lead)" class="mt-1 text-blue-400">View Information</button>
+                   </td>
                    <td class="px-6 py-4">
                      <span class="px-2 py-1 rounded-full text-xs border" :class="getStatusColor(lead.status)">
                         {{ crmConfig.statuses.find(s => s.slug === lead.status)?.label || lead.status }}
@@ -320,11 +597,33 @@
                    <td class="px-6 py-4"><span :class="getTempColor(lead.temperature)">● {{ lead.temperature }}</span></td>
                    <td class="px-6 py-4">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
                    <td class="px-6 py-4 text-right">
-                    <button @click="openLead(lead)" class="ml-3 text-blue-500 hover:underline">Open</button>
+                    <button @click="openLead(lead)" class="ml-3 text-blue-400 hover:underline">Open</button>
                   </td>
                 </tr>
               </tbody>
             </table>
+
+            <div v-if="viewMode === 'list'" class="px-6 py-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+                <span class="text-sm text-slate-500">
+                    Showing {{ leads.length }} of {{ pagination.total }} {{ crmConfig.entity_name_plural }}
+                </span>
+                <div class="flex gap-2">
+                    <button 
+                        @click="fetchData(pagination.current_page - 1)" 
+                        :disabled="pagination.current_page === 1"
+                        class="px-3 py-1 border rounded disabled:opacity-50 dark:border-slate-700 dark:text-white"
+                    >
+                        Prev
+                    </button>
+                    <button 
+                        @click="fetchData(pagination.current_page + 1)" 
+                        :disabled="pagination.current_page === pagination.last_page"
+                        class="px-3 py-1 border rounded disabled:opacity-50 dark:border-slate-700 dark:text-white"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
           </div>
         </div>
     
@@ -333,7 +632,8 @@
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeLead"></div>
             <div class="relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] transform transition-all">
               <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Submission Details</h3>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">{{ crmConfig.entity_name_singular }} Details <span class="inline-flex items-center rounded-md mr-1 px-2 py-1 text-xs font-medium inset-ring" :class="getTempBadgeColor(activeLead.temperature)">{{ activeLead.temperature }}</span>
+                </h3>
                 <button @click="closeLead" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-slate-900 transition-colors">
                   <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -346,13 +646,13 @@
                         <p class="mt-1 text-sm font-mono text-slate-700 dark:text-slate-300">{{ activeLead.id }}</p>
                      </div>
                      <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Submitted</span>
-                        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">{{ new Date(activeLead.created_at).toLocaleString() }}</p>
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Added On</span>
+                        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">{{ new Date(activeLead.created_at).toLocaleDateString() }}</p>
                      </div>
                   </div>
     
                   <div>
-                    <h4 class="text-sm font-medium text-slate-900 dark:text-white mb-3">Form Data</h4>
+                    <h4 class="text-sm font-medium text-slate-900 dark:text-white mb-3">{{ crmConfig.entity_name_singular }} Data</h4>
                     <div class="space-y-3">
                       <div v-for="(value, key) in activeLead.payload" :key="key" class="group rounded-lg border border-slate-200 dark:border-slate-800 p-3 hover:border-primary/50 transition-colors">
                         <dt class="text-xs font-medium text-slate-500 uppercase mb-1.5">{{ key }}</dt>
@@ -373,6 +673,41 @@
           </div>
         </Transition>
       </div>
+
+    <Transition name="slide-up">
+        <div v-if="selectedLeadIds.length > 0" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4">
+            <div class="bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl rounded-2xl p-2 flex items-center justify-between border border-white/10 dark:border-slate-200">
+                <div class="flex items-center gap-4 px-4">
+                    <div class="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white font-bold">
+                        {{ selectedLeadIds.length }}
+                    </div>
+                    <div class="hidden sm:block">
+                        <p class="text-sm font-bold leading-tight">Selected {{  selectedLeadIds.length > 1 ? crmConfig.entity_name_plural : crmConfig.entity_name_singular }} </p>
+                        <button @click="selectedLeadIds = []" class="text-[10px] uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity">
+                            Deselect All
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1 bg-white/5 dark:bg-slate-50 p-1 rounded-xl">
+                    <button @click="handleBulkAction('export')" class="flex items-center gap-2 p-2.5 hover:bg-white/10 dark:hover:bg-slate-200 rounded-lg transition-all group" title="Export CSV">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span>Export</span>
+                    </button>
+
+                    <!-- <button @click="handleBulkAction('status_update')" class="p-2.5 hover:bg-white/10 dark:hover:bg-slate-200 rounded-lg transition-all opacity-40 hover:opacity-100" title="Bulk Update Status">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    </button>
+
+                    <button @click="handleBulkAction('delete')" class="p-2.5 hover:bg-red-500/20 text-red-400 rounded-lg transition-all" title="Delete Leads">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button> -->
+                </div>
+            </div>
+        </div>
+    </Transition>
+
+    <input type="file" ref="fileInput" @change="handleImport" class="hidden" accept=".csv" />
     </template>
     
     <style scoped>

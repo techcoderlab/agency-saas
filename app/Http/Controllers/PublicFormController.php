@@ -21,7 +21,7 @@ class PublicFormController extends Controller
 
         // Manual check prevents default Laravel 404 page, returns JSON instead
         if (!$form) {
-            return response()->json(['message' => '404 Not Found'], 404);
+            return response()->json(['message' => 'This form is not found or temporarily closed.'], 404);
         }
 
         return response()->json([
@@ -36,14 +36,11 @@ class PublicFormController extends Controller
         // 1. Fast lookup (avoid two queries)
         $form = Form::where('id', $uuid)
             ->where('is_active', true)
-            ->firstOrFail();
+            ->first();
 
         if (!$form) {     
-            return response()->json(['message' => 'This form is not found.'], 404); 
+            return response()->json(['message' => 'This form is not found or temporarily closed.'], 404); 
         }
-
-        if(!$form->is_active)
-            return response()->json(['message' => 'This form may temporarily closed.'], 404); 
         
         // 2. Create lead in one clean call
         $lead = Lead::create([
@@ -72,11 +69,7 @@ class PublicFormController extends Controller
                 ->get()
         );
 
-        // ⚠ FIXED THE BUG:
-        // You wrapped `$webhooks` inside `collect([$webhooks])` — that becomes a collection-of-collections.
-        // DispatchWebhookBatchJob expects a normal collection. 
-        // So we pass `$webhooks` directly.
-
+        // 5. Dispatch webhooks to queue for async execution
         DispatchWebhookBatchJob::dispatch(
             data: $payload,
             webhooks: $webhooks,

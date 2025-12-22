@@ -19,7 +19,7 @@
         email: email.value,
         password: password.value,
       })
-      router.push({ name: 'leads' }) // or 'dashboard' depending on your route name
+      router.push({ name: 'dashboard' }) // or 'dashboard' depending on your route name
     } catch (e) {
       error.value = e.response?.data?.message || 'Invalid credentials'
     } finally {

@@ -1,160 +1,142 @@
 <script setup>
-  import { ref, onMounted } from 'vue'
-  import api from '../../utils/request'
-  import FormBuilder from '../../components/FormBuilder.vue'
-  
-  const leads = ref([])
-  const loadingLeads = ref(false)
-  
-  const forms = ref([])
-  const loadingForms = ref(false)
-  const showBuilder = ref(false)
-  const editingForm = ref(null)
-  
-  const fetchLeads = async () => {
-    loadingLeads.value = true
-    try {
-      const { data } = await api.get('/leads')
-      leads.value = data.data || data // Handle pagination wrap if exists
-    } catch(e) {} finally {
-      loadingLeads.value = false
+    import { onMounted, ref, computed } from 'vue'
+    import api from '../../utils/request'
+    import VueApexCharts from 'vue3-apexcharts'
+    
+    const loading = ref(true)
+    const stats = ref({
+        overview: { total_leads: 0, new_leads: 0, hot_leads: 0, conversion_rate: 0, stale_leads: 0 },
+        growth: { this_month: 0, last_month: 0, percentage: 0 },
+        chart_data: {},
+        top_sources: []
+    })
+    
+    // --- Chart Configuration (GHL Style) ---
+    const chartOptions = computed(() => ({
+        chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false }, sparkline: { enabled: false } },
+        colors: ['#6366f1'], // Indigo-500
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 2 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 90, 100] } },
+        xaxis: { 
+            categories: Object.keys(stats.value.chart_data),
+            labels: { show: false },
+            axisBorder: { show: false },
+            axisTicks: { show: false }
+        },
+        yaxis: { show: false },
+        grid: { show: false },
+        tooltip: { x: { format: 'dd MMM' }, theme: 'dark' }
+    }))
+    
+    const chartSeries = computed(() => [{
+        name: 'New Leads',
+        data: Object.values(stats.value.chart_data)
+    }])
+    
+    const fetchDashboard = async () => {
+        loading.value = true
+        try {
+            const res = await api.get('/leads/stats')
+            stats.value = res.data.stats
+        } catch (e) {
+            console.error("Dashboard failed to load", e)
+        } finally {
+            loading.value = false
+        }
     }
-  }
-  
-  const fetchForms = async () => {
-    loadingForms.value = true
-    try {
-      const { data } = await api.get('/forms')
-      forms.value = data
-    } catch(e) {} finally {
-      loadingForms.value = false
-    }
-  }
-  
-  const editForm = (form) => {
-    editingForm.value = form
-    showBuilder.value = true
-  }
-  
-  const newForm = () => {
-    editingForm.value = null
-    showBuilder.value = true
-  }
-  
-  const handleFormSaved = () => {
-    showBuilder.value = false
-    fetchForms()
-  }
-  
-  onMounted(() => {
-    fetchLeads()
-    fetchForms()
-  })
-  </script>
-  
-  <template>
-    <div class="space-y-8">
-      
-      <div>
-          <h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Overview of your agency performance.</p>
-      </div>
-  
-      <section class="card overflow-hidden">
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-          <h3 class="font-semibold text-slate-800 dark:text-slate-200">Recent Leads</h3>
-          <router-link to="/admin/leads" class="text-xs font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400">View All</router-link>
+    
+    onMounted(fetchDashboard)
+    </script>
+    
+    <template>
+        <div class="p-6 space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen">
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+                    <p class="text-slate-500 text-sm mt-1">Real-time performance metrics for your lead generation.</p>
+                </div>
+                <button @click="fetchDashboard" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-semibold hover:shadow-sm transition-all">
+                    <svg :class="{'animate-spin': loading}" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    Sync Data
+                </button>
+            </div>
+    
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Efficiency</span>
+                        <div class="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-indigo-600">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-black text-slate-900 dark:text-white">{{ stats.overview.conversion_rate }}%</div>
+                    <div class="text-sm font-medium text-slate-500 mt-1">Opportunities-to-Close Rate</div>
+                </div>
+    
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border-2 shadow-sm" :class="stats.overview.stale_leads > 0 ? 'border-red-100 dark:border-red-900/30' : 'border-slate-200 dark:border-slate-800'">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Revenue Leak</span>
+                        <div :class="stats.overview.stale_leads > 0 ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-400'" class="p-2 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-black" :class="stats.overview.stale_leads > 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'">{{ stats.overview.stale_leads }}</div>
+                    <div class="text-sm font-medium text-slate-500 mt-1">Unattended (>24h)</div>
+                </div>
+    
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Pipeline Growth</span>
+                        <span :class="stats.growth.percentage >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'" class="text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            {{ stats.growth.percentage >= 0 ? '+' : '' }}{{ stats.growth.percentage }}%
+                        </span>
+                    </div>
+                    <div class="text-3xl font-black text-slate-900 dark:text-white">{{ stats.growth.this_month }}</div>
+                    <div class="text-sm font-medium text-slate-500 mt-1">Opportunities This Month</div>
+                </div>
+    
+                <div class="bg-indigo-600 p-6 rounded-2xl shadow-xl shadow-indigo-500/20">
+                    <div class="flex items-center justify-between mb-2 text-indigo-200">
+                        <span class="text-xs font-bold uppercase tracking-widest">Hot Pipeline</span>
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.5-7 3 3 3 6 1 9 3-2 4-3 6-3 0 1.5-1 4-2.5 5.5z" /></svg>
+                    </div>
+                    <div class="text-3xl font-black text-white">{{ stats.overview.hot_leads }}</div>
+                    <div class="text-sm font-medium text-indigo-100 mt-1">High Intent Opportunities</div>
+                </div>
+            </div>
+    
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <div class="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-slate-900 dark:text-white italic">7-Day Acquisition Trend</h3>
+                        <span class="text-xs text-slate-400 font-medium">Daily Opportunities Captured</span>
+                    </div>
+                    <div class="h-64">
+                        <VueApexCharts width="100%" height="100%" :options="chartOptions" :series="chartSeries" />
+                    </div>
+                </div>
+    
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white mb-6">Traffic Integrity</h3>
+                    <div class="space-y-4">
+                        <div v-for="source in stats.top_sources" :key="source.source" class="flex flex-col">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="capitalize font-medium text-slate-600 dark:text-slate-400">{{ source.source.replace('_', ' ') }}</span>
+                                <span class="font-bold text-slate-900 dark:text-white">{{ source.count }}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-indigo-500 h-full transition-all duration-500" :style="{ width: (source.count / stats.overview.total_leads * 100) + '%' }"></div>
+                            </div>
+                        </div>
+                        <div v-if="stats.top_sources.length === 0" class="text-center py-8 text-slate-400 text-sm">No source data available yet.</div>
+                    </div>
+                </div>
+    
+            </div>
+    
         </div>
-        
-        <div v-if="loadingLeads" class="p-8 text-center text-slate-500 text-sm">Loading data...</div>
-        
-        <div v-else class="overflow-x-auto">
-          <table class="table">
-              <thead>
-              <tr>
-                  <th>ID</th>
-                  <th>Source Form</th>
-                  <th>Status</th>
-                  <th>Date</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr v-for="lead in leads.slice(0, 5)" :key="lead.id">
-                  <td class="font-mono text-xs text-slate-500">#{{ lead.id }}</td>
-                  <td class="font-medium text-slate-700 dark:text-slate-300">
-                      {{ lead.form?.name || 'Unknown Form' }}
-                  </td>
-                  <td>
-                      <span class="px-2 py-0.5 rounded-full text-xs border bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 capitalize">
-                          {{ lead.status }}
-                      </span>
-                  </td>
-                  <td class="text-slate-500">
-                      {{ new Date(lead.created_at).toLocaleDateString() }}
-                  </td>
-              </tr>
-              <tr v-if="leads.length === 0">
-                  <td colspan="4" class="text-center py-6 text-slate-500 italic">No leads found.</td>
-              </tr>
-              </tbody>
-          </table>
-        </div>
-      </section>
-  
-      <section class="card overflow-hidden">
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-          <h3 class="font-semibold text-slate-800 dark:text-slate-200">Active Forms</h3>
-          <button
-            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 transition-colors"
-            @click="newForm"
-          >
-            + New Form
-          </button>
-        </div>
-  
-        <div v-if="loadingForms" class="p-8 text-center text-slate-500 text-sm">Loading data...</div>
-  
-        <div v-else class="overflow-x-auto">
-          <table class="table">
-              <thead>
-              <tr>
-                  <th>Name</th>
-                  <th>Status</th>
-                  <th>Schema Fields</th>
-                  <th class="text-right">Actions</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr v-for="form in forms.slice(0, 5)" :key="form.id">
-                  <td class="font-bold text-slate-900 dark:text-white">{{ form.name }}</td>
-                  <td>
-                  <span
-                      class="px-2 py-0.5 rounded-full text-xs border"
-                      :class="form.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' : 'bg-slate-100 text-slate-600 border-slate-200'"
-                  >
-                      {{ form.is_active ? 'Active' : 'Inactive' }}
-                  </span>
-                  </td>
-                  <td class="text-slate-500 text-xs">{{ form.schema?.length || 0 }} fields</td>
-                  <td class="text-right">
-                  <button
-                      class="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs font-medium transition-colors"
-                      @click="editForm(form)"
-                  >
-                      Edit
-                  </button>
-                  </td>
-              </tr>
-              </tbody>
-          </table>
-        </div>
-  
-        <FormBuilder
-          v-if="showBuilder"
-          :form="editingForm"
-          @saved="handleFormSaved"
-          @cancel="showBuilder = false"
-        />
-      </section>
-    </div>
-  </template>
+    </template>

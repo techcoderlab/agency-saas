@@ -21,7 +21,7 @@ return new class extends Migration
 
         // 2. Update Leads Table
         Schema::table('leads', function (Blueprint $table) {
-            $table->string('source')->default('form')->after('form_id'); // e.g., manual, csv, form
+            $table->string('source')->default('form')->after('form_id'); // e.g., linkedIn, google_maps, yellowpage, form
             $table->string('temperature')->default('cold')->after('source'); // cold, warm, hot
             $table->string('status')->default('new')->after('temperature'); // new, contacted, closed
             $table->json('meta_data')->nullable()->after('payload');

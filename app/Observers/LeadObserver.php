@@ -39,7 +39,7 @@ class LeadObserver
                 Log::warning("⚠ Lead-level loop detected for Lead #{$lead->id}. Webhooks paused.");
                 LeadActivity::create([
                     'lead_id' => $lead->id,
-                    'type' => 'system',
+                    'type' => 'system_error',
                     'content' => "Webhooks paused due to loop protection."
                 ]);
             }
@@ -115,10 +115,14 @@ class LeadObserver
 
     public function created(Lead $lead)
     {
+        $isAppToken = request()->user()->loggedInFromApp()[0];
+        $activityNote = (!$isAppToken ? 'External s': 'S')."ystem inserted a lead, using ".strtoupper($lead->insert_method)." upload.";
         LeadActivity::create([
             'lead_id' => $lead->id,
-            'type' => 'system',
-            'content' => "Lead created via {$lead->source}"
+            'type' => (!$isAppToken ? 'external_': '').'system_inserted',
+            'content' => $activityNote,
+            // 'content' => "Lead created via {$lead->source}, using the {$currentTokenString}.",
+
         ]);
 
         $this->triggerWebhooks($lead, 'lead.created');
@@ -126,30 +130,52 @@ class LeadObserver
 
     public function updated(Lead $lead)
     {
-        $changes = [];
+        // 1. Lightweight Check: Avoid crashing if running from CLI/Queue (no request)
+        $user = request()->user(); 
+        $isAppToken = $user && method_exists($user, 'loggedInFromApp') ? $user->loggedInFromApp()[0] : false;
+
+        // Pre-calculate static strings to save CPU cycles inside loops
+        $actorLabel = $isAppToken ? 'System' : 'External system';
+        $typePrefix = $isAppToken ? '' : 'external_';
+
+        $activities = [];
         $events = [];
 
-        if ($lead->isDirty('status')) {
-            $changes[] = "Status changed from '{$lead->getOriginal('status')}' to '{$lead->status}'";
+        // 2. Use 'wasChanged' instead of 'isDirty'
+        // 'isDirty' is often empty inside the 'updated' event because data is already synced.
+        // 'wasChanged' is reliable here.
+
+        if ($lead->wasChanged('status')) {
+            $activities[] = [
+                'type' => "{$typePrefix}system_updated_status",
+                'content' => "{$actorLabel} updated status of this lead from '{$lead->getOriginal('status')}' to '{$lead->status}'.",
+            ];
             $events[] = 'lead.updated.status';
         }
 
-        if ($lead->isDirty('temperature')) {
-            $changes[] = "Temperature changed from '{$lead->getOriginal('temperature')}' to '{$lead->temperature}'";
+        if ($lead->wasChanged('temperature')) {
+            $activities[] = [
+                'type' => "{$typePrefix}system_updated_temperature",
+                'content' => "{$actorLabel} updated temperature of this lead from '{$lead->getOriginal('temperature')}' to '{$lead->temperature}'.",
+            ];
             $events[] = 'lead.updated.temperature';
         }
 
-        if ($changes) {
-            // Batch insert for better performance
-            LeadActivity::insert(
-                collect($changes)->map(fn($c) => [
-                    'lead_id' => $lead->id,
-                    'type' => 'status_change',
-                    'content' => $c,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ])->toArray()
-            );
+        if (!empty($activities)) {
+            $now = now(); 
+
+            // 3. Native Arrays over Collections
+            // On 1.5GB RAM, creating Collection objects uses unnecessary memory. 
+            // Standard PHP loops are faster and lighter.
+            foreach ($activities as &$activity) {
+                $activity['lead_id'] = $lead->id;
+                $activity['created_at'] = $now;
+                $activity['updated_at'] = $now;
+            }
+            unset($activity); // Break reference
+
+            // 4. Single Database Hit
+            LeadActivity::insert($activities);
 
             $events[] = 'lead.updated';
 

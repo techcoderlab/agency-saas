@@ -52,11 +52,15 @@ Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function ()
 
     // Agency leads listing (per-tenant via global scope)
     Route::get('/leads', [LeadController::class, 'index']);
-    Route::get('/leads/stats', [LeadController::class, 'stats']); // <--- ADD THIS HERE
+    Route::get('/leads/stats', [LeadController::class, 'stats']);
     Route::get('/leads/{lead}', [LeadController::class, 'show']);
+    Route::get('/leads/{lead}/activities', [LeadController::class, 'activities']);
+    Route::post('/leads', [LeadController::class, 'store']);
+    Route::post('/leads/batch', [LeadController::class, 'batchStore']);
     Route::put('/leads/{lead}', [LeadController::class, 'update']);
     Route::post('/leads/{lead}/note', [LeadController::class, 'addNote']);
-    Route::post('/leads/import', [LeadController::class, 'import']); // Add the import route
+    Route::post('/leads/import', [LeadController::class, 'import']); 
+    Route::post('/leads/export', [LeadController::class, 'export']); 
     
     
     // API Keys Management (New)

@@ -2,16 +2,18 @@
     import { onMounted, ref, computed } from 'vue'
     import { useRoute, useRouter } from 'vue-router'
     import api from '../../utils/request'
+    import LeadActivityTimeline from '../../components/LeadActivityTimeline.vue'
     
     const route = useRoute(); const router = useRouter();
     const lead = ref(null); const loading = ref(true); const noteContent = ref('');
     
+
     const fetchLead = async () => {
       try { const { data } = await api.get(`/leads/${route.params.id}`); lead.value = data } 
       catch (e) {} finally { loading.value = false }
     }
-    const updateLead = async () => { try { await api.put(`/leads/${lead.value.id}`, { status: lead.value.status, temperature: lead.value.temperature }) } catch (e) { alert('Failed') } }
-    const addNote = async () => { if(!noteContent.value) return; try { const { data } = await api.post(`/leads/${lead.value.id}/note`, { content: noteContent.value }); lead.value.activities.unshift(data); noteContent.value = '' } catch (e) {} }
+    const updateLead = async () => { try { await api.put(`/leads/${lead.value.id}`, { status: lead.value.status, temperature: lead.value.temperature }) } catch (e) { console.log(e) } }
+    const addNote = async () => { if(!noteContent.value) return; try { const { data } = await api.post(`/leads/${lead.value.id}/note`, { content: noteContent.value }); lead.value.activities.unshift(data); noteContent.value = '' } catch (e) {console.error(e)} }
     
     const getBadgeClass = (color) => {
         const map = { blue: 'badge-blue', green: 'badge-green', yellow: 'badge-yellow', red: 'badge-red', gray: 'badge-slate' }
@@ -40,7 +42,7 @@
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
              </button>
              <div>
-                <h2 class="page-title">Lead Details</h2>
+                <h2 class="page-title">Manage {{ lead?.crm_config?.entity_name_singular }}</h2>
                 <p class="page-subtitle">View and manage activity.</p>
              </div>
           </div>
@@ -52,8 +54,8 @@
         <div v-else class="space-y-6">
             <div class="card">
                 <div class="card-header">
-                    <span class="card-title">Submission Data</span>
-                    <span class="text-xs text-slate-500">{{ new Date(lead.created_at).toLocaleString() }}</span>
+                    <span class="card-title">Details</span>
+                    <span class="text-xs text-slate-500">{{ new Date(lead.created_at).toLocaleDateString() }}</span>
                 </div>
                 <div class="card-body">
                     <div class="flex flex-wrap gap-6 mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
@@ -74,6 +76,8 @@
                     </div>
                 </div>
             </div>
+
+            
     
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-1 space-y-6">
@@ -97,14 +101,18 @@
                         </div>
                     </div>
                 </div>
-    
                 <div class="lg:col-span-2 space-y-6">
                     <div class="card p-4">
                         <textarea v-model="noteContent" class="form-textarea mb-3" rows="3" placeholder="Add a note..."></textarea>
                         <div class="flex justify-end"><button @click="addNote" :disabled="!noteContent" class="btn-primary">Post Note</button></div>
                     </div>
     
-                    <div class="card">
+                    <div class="grid grid-cols-1 lg:grid-cols-1 gap-8">
+                        <div class="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <LeadActivityTimeline :leadId="lead.id" />
+                        </div>
+                    </div>
+                    <!-- <div class="card">
                         <div class="card-header">
                             <span class="card-title">Activity Feed</span>
                             <span class="text-xs text-slate-500">{{ lead.activities.length }} events</span>
@@ -118,7 +126,7 @@
                                 <p class="text-sm text-slate-700 dark:text-slate-300 mt-2">{{ act.content }}</p>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>

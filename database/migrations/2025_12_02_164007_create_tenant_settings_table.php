@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             // Nullable tenant_id: NULL = Super Admin / Default Global Settings
             $table->foreignId('tenant_id')->nullable()->constrained()->onDelete('cascade'); 
-            $table->json('client_theme'); // Stores { "primary": "#hex", "font": "Inter" }
+            $table->json('client_theme')->nullable(); // Stores { "primary": "#hex", "font": "Inter" }
             $table->timestamps();
         });
     }

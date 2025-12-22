@@ -10,6 +10,7 @@ import WebhooksPage from '../views/admin/WebhooksPage.vue'
 import ApiKeysPage from '../views/admin/ApiKeysPage.vue' // Import the new view
 import AiChatIndexPage from '../views/admin/ai-chat/AiChatIndex.vue'
 import AiChatRoomPage from '../views/admin/ai-chat/AiChatRoom.vue'
+import AgencyDashboard from '@/views/admin/AgencyDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,7 +27,9 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: { name: 'leads' },
+          name: 'dashboard',
+          component: AgencyDashboard,
+          // redirect: { name: 'leads' },
         },
         {
           path: 'leads',

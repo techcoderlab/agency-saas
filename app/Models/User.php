@@ -75,5 +75,16 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Tenant::class);
     }
+
+    public function loggedInFromApp(){
+        $currentToken = $this->currentAccessToken();
+        return [$currentToken?->name === 'api', $currentToken];
+    }
+
+    public function loggedInFromString(){
+
+        $loggedInFromAppArr = $this->loggedInFromApp();
+        return $loggedInFromAppArr[0] ? "app" : "'{$loggedInFromAppArr[1]?->name}' api key";
+    }
 }
 

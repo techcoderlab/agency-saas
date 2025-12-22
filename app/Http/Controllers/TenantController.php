@@ -75,12 +75,13 @@ class TenantController extends Controller
             'status' => $validated['status'] ?? 'active',
             'enabled_modules' => $validated['enabled_modules'] ?? ['leads', 'forms'], 
         ]);
-
+        
         // Save CRM Config if provided
         if (isset($validated['crm_config'])) {
             TenantSetting::create([
                 'tenant_id' => $tenant->id,
-                'crm_config' => $validated['crm_config']
+                'crm_config' => $validated['crm_config'],
+                'client_theme' => $validated['client_theme'] ?? []
             ]);
         }
 
