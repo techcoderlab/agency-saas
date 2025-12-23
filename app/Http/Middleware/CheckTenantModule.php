@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TenantManager;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,17 +15,14 @@ class CheckTenantModule
     public function handle(Request $request, Closure $next, string $module): Response
     {
         $user = $request->user();
-
-        if (!$user || !$user->tenant) {
-            // Super admins might not have a tenant, allow them or handle accordingly
-            if ($user && $user->isSuperAdmin()) {
-                 return $next($request);
-            }
-            abort(403, 'Tenant context missing.');
+        
+        if ($user && $user->isSuperAdmin()) {
+            return $next($request);
         }
 
-        // Check if the module is in the enabled_modules array
-        if (!in_array($module, $user->tenant->enabled_modules ?? [])) {  // Super admin cant pass this check because it doesn't has tenant
+        $tenantManager = app(TenantManager::class);
+
+        if (!$tenantManager->isModuleEnabled($module)) {
             abort(403, "The '{$module}' module is not enabled for your organization.");
         }
 

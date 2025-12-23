@@ -24,8 +24,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        // 'role', // role is hanling by Spatie
-        'tenant_id',
     ];
 
     /**
@@ -71,9 +69,14 @@ class User extends Authenticatable
         return !$this->isTenantSuperAdmin();
     }
 
-    public function tenant()
+    public function tenants()
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsToMany(Tenant::class, 'tenant_user')->withPivot('role', 'is_primary');
+    }
+
+    public function currentTenant()
+    {
+        return $this->belongsTo(Tenant::class, 'current_tenant_id');
     }
 
     public function loggedInFromApp(){

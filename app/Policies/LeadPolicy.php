@@ -4,61 +4,54 @@ namespace App\Policies;
 
 use App\Models\Lead;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 class LeadPolicy
 {
     /**
-     * The 3-Gate Check Helper
+     * Determine whether the user can view any models.
      */
-    private function checkGates(User $user, string $permission, string $tokenScope): bool
-    {
-        // Gate 1: Tenant Module Check
-        // (Middleware handles the route, but Policy handles the specifics if called manually)
-        if (!in_array('leads', $user->tenant->enabled_modules ?? [])) {  // Super admin cant pass this check because it doesn't has tenant
-            return false;
-        }
-
-        // Gate 2: User Role Check (Spatie)
-        // Ensure you have seeded permissions like 'read leads', 'write leads'
-        if (!$user->can($permission)) {
-             return false;
-        }
-
-        // Gate 3: Token Scope Check (Sanctum)
-        // Works for API Keys. Web sessions automatically pass tokenCan().
-        if (!$user->tokenCan($tokenScope)) {
-            return false;
-        }
-
-        return true;
-    }
-
     public function viewAny(User $user): bool
     {
-        return $this->checkGates($user, 'view leads', 'leads:view');
+        // The 'CheckTenantModule' middleware already verifies if the 'leads' module is enabled.
+        // The 'BelongsToTenant' global scope on the Lead model handles data isolation.
+        // This policy just needs to check if the user has the role permission to view leads
+        // within their established tenant context.
+        return $user->hasPermissionTo('view leads') && !is_null($user->current_tenant_id);
     }
 
+    /**
+     * Determine whether the user can view the model.
+     */
     public function view(User $user, Lead $lead): bool
     {
-        // Also check if lead belongs to tenant
-        return $user->tenant_id === $lead->tenant_id 
-            && $this->checkGates($user, 'view leads', 'leads:view');
+        // Check if the lead belongs to the user's active tenant and if they have permission.
+        return $user->current_tenant_id === $lead->tenant_id && $user->hasPermissionTo('view leads');
     }
 
+    /**
+     * Determine whether the user can create models.
+     */
     public function create(User $user): bool
     {
-        return $this->checkGates($user, 'write leads', 'leads:write');
+        // The 'CheckTenantModule' middleware handles module access.
+        // We just check for role permission and tenant context.
+        return $user->hasPermissionTo('write leads') && !is_null($user->current_tenant_id);
     }
 
+    /**
+     * Determine whether the user can update the model.
+     */
     public function update(User $user, Lead $lead): bool
     {
-        return $user->tenant_id === $lead->tenant_id 
-            && $this->checkGates($user, 'update leads', 'leads:update');
+        return $user->current_tenant_id === $lead->tenant_id && $user->hasPermissionTo('update leads');
     }
 
+    /**
+     * Determine whether the user can delete the model.
+     */
     public function delete(User $user, Lead $lead): bool
     {
-        return $user->tenant_id === $lead->tenant_id 
-            && $this->checkGates($user, 'delete leads', 'leads:delete');
+        return $user->current_tenant_id === $lead->tenant_id && $user->hasPermissionTo('delete leads');
     }
 }

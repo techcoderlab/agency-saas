@@ -14,12 +14,17 @@ class Tenant extends Model
         'name',
         'domain',
         'status',
-        'enabled_modules',
     ];
 
-    protected $casts = [
-        'enabled_modules' => 'array', 
-    ];
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'tenant_user')->withPivot('role', 'is_primary');
+    }
+
+    public function plans()
+    {
+        return $this->belongsToMany(Plan::class, 'plan_tenant');
+    }
     
     public function settings()
     {

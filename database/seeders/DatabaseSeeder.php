@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RolesAndPermissionsSeeder::class, // Run Permissions Seeder First
-            ApplicationSatrtUpSeeder::class
+            ApplicationSatrtUpSeeder::class,
+            SystemSyncSeeder::class, // Run the new System Sync Seeder
         ]);
     
     }

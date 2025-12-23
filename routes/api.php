@@ -1,16 +1,17 @@
 <?php
 
+use App\Http\Controllers\AiChatController;
+use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BootstrapController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Middleware\CheckTenantStatus;
-use App\Http\Controllers\ApiKeyController;
-use App\Http\Controllers\AiChatController;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 
 
@@ -18,17 +19,18 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
 Route::middleware(['auth:sanctum', CheckTenantStatus::class])->group(function () {
+    Route::get('/bootstrap', BootstrapController::class);
     Route::post('/n8n/token', [AuthController::class, 'n8nToken']);
 
 
     
     // Super admin tenant management
     Route::get('/tenants', [TenantController::class, 'index']);
-    Route::get('/tenants/modules', [TenantController::class, 'getModulesForTenant']);
     Route::post('/tenants', [TenantController::class, 'store']);
     Route::patch('/tenants/{tenant}', [TenantController::class, 'update']);
     Route::delete('/tenants/{tenant}', [TenantController::class, 'destroy']);
     Route::post('/tenants/crm-config', [TenantController::class, 'updateCrmConfig']);
+    Route::get('/tenants/modules', [TenantController::class, 'getModulesForTenant']);
 
 
     // AI Chat Modules
