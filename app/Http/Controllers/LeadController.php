@@ -24,7 +24,7 @@ class LeadController extends Controller
         $this->authorize('viewAny', Lead::class);
 
         $settings = TenantSetting::where('tenant_id', $tenantId)->first();
-        
+
         return $settings->crm_config ?? [
             'entity_name_singular' => 'Lead',
             'entity_name_plural' => 'Leads',
@@ -45,16 +45,16 @@ class LeadController extends Controller
 
         // 3-Layer Check via Policy
         $this->authorize('viewAny', Lead::class);
-        $tenantId = $request->user()->tenant_id;
+        $tenantId = $request->user()->current_tenant_id;
 
-       // CACHING STRATEGY:
-        // We cache dashboard stats for 5 minutes. 
-        // This protects your Shared Hosting CPU from calculating these numbers 
+        // CACHING STRATEGY:
+        // We cache dashboard stats for 5 minutes.
+        // This protects your Shared Hosting CPU from calculating these numbers
         // every time the client refreshes the page.
         $cacheKey = "dashboard_stats_{$tenantId}";
 
         $data = Cache::remember($cacheKey, 300, function () use ($tenantId) {
-            
+
             $now = now();
             $startOfMonth = $now->copy()->startOfMonth();
             $startOfLastMonth = $now->copy()->subMonth()->startOfMonth();
@@ -83,7 +83,7 @@ class LeadController extends Controller
                 ->groupBy('date')
                 ->orderBy('date')
                 ->get()
-                ->mapWithKeys(fn ($item) => [$item->date => $item->count]);
+                ->mapWithKeys(fn($item) => [$item->date => $item->count]);
 
             // Fill in missing days with 0 (for a smooth chart)
             $chartData = [];
@@ -101,8 +101,8 @@ class LeadController extends Controller
                 ->get();
 
             // 4. CALCULATIONS
-            $conversionRate = $aggregates->total > 0 
-                ? round(($aggregates->closed_leads / $aggregates->total) * 100, 1) 
+            $conversionRate = $aggregates->total > 0
+                ? round(($aggregates->closed_leads / $aggregates->total) * 100, 1)
                 : 0;
 
             // Calculate Growth Percentage
@@ -154,18 +154,18 @@ class LeadController extends Controller
     {
         // 1. Authorization
         $this->authorize('viewAny', Lead::class);
-    
+
         // 2. Use a "Thin" Query (Select only what you need)
         // Avoid selecting massive JSON payloads if the frontend doesn't need them in the list view.
-        $query = Lead::query()->where('tenant_id', $request->user()->tenant_id);
-    
+        $query = Lead::query()->where('tenant_id', $request->user()->current_tenant_id);
+
         // --- Standard Filters (Optimized with Indexed Columns) ---
         foreach (['status', 'temperature', 'source'] as $filter) {
             if ($request->filled($filter) && $request->$filter !== 'all') {
                 $query->where($filter, $request->$filter);
             }
         }
-    
+
         // --- Date Range Filters (Using whereBetween is slightly faster) ---
         if ($request->filled(['date_from', 'date_to'])) {
             $query->whereBetween('created_at', [$request->date_from, $request->date_to]);
@@ -174,34 +174,34 @@ class LeadController extends Controller
         } elseif ($request->filled('date_to')) {
             $query->where('created_at', '<=', $request->date_to);
         }
-    
+
         // --- Advanced Smart Search (Shared Hosting Safety) ---
         if ($request->filled('search')) {
             $term = $request->search;
-            
-            $query->where(function($q) use ($term) {
+
+            $query->where(function ($q) use ($term) {
                 // Priority 1: Exact ID (Very Fast)
                 if (is_numeric($term)) {
                     $q->where('id', $term);
                 }
-    
+
                 // Priority 2: Text Search
                 // We use simple 'like' which is case-insensitive in MySQL (Hostinger default)
                 // to avoid the overhead of LOWER() functions on every row.
                 $q->orWhere('source', 'like', "%{$term}%")
-                  ->orWhere('notes', 'like', "%{$term}%");
-    
+                    ->orWhere('notes', 'like', "%{$term}%");
+
                 // Priority 3: JSON Search (The CPU Killer)
                 // On Shared Hosting, avoid searching the entire JSON blob if possible.
                 // If you know the key (e.g., email), use ->where('payload->email', 'like', ...)
                 $q->orWhere('payload', 'like', "%{$term}%");
             });
         }
-    
+
         // --- Pagination & Performance ---
         $perPage = (int) $request->input('per_page', 20);
         $perPage = min(max($perPage, 5), 100);
-    
+
         // Eager loading specific columns to save memory
         return $query->with('form:id,name')
             ->orderByDesc('id') // Sorting by ID is faster than created_at if ID is auto-increment
@@ -216,11 +216,11 @@ class LeadController extends Controller
         $this->authorize('view', $lead);
 
         $lead->load(['activities', 'form']);
-        
+
         // Inject CRM Config for dynamic frontend rendering
         // This attaches the config to the lead object response seamlessly
         $lead->setAttribute('crm_config', $this->getCrmConfig($lead->tenant_id));
-        
+
         return $lead;
     }
 
@@ -232,8 +232,8 @@ class LeadController extends Controller
 
         $validated = $request->validate([
             'status' => 'sometimes|nullable|string|max:50',
-            'temperature' => ['sometimes','nullable','string', Rule::in(['cold', 'warm', 'hot'])],
-            'notes' => ['sometimes','nullable','string', Rule::in(['system_added_note', 'external_system_added_note'])]
+            'temperature' => ['sometimes', 'nullable', 'string', Rule::in(['cold', 'warm', 'hot'])],
+            'notes' => ['sometimes', 'nullable', 'string', Rule::in(['system_added_note', 'external_system_added_note'])]
         ]);
 
         // Fix for webhook looping:
@@ -254,7 +254,7 @@ class LeadController extends Controller
         $this->authorize('update', $lead);
 
         $request->validate([
-            'content' => 'required|string|max:300', 
+            'content' => 'required|string|max:300',
             'type' => [
                 'nullable',
                 'string',
@@ -268,7 +268,7 @@ class LeadController extends Controller
         ]);
 
         // Optional: Trigger note event
-        // $this->triggerWebhooks($lead, 'lead.note_added'); 
+        // $this->triggerWebhooks($lead, 'lead.note_added');
         // (Accessing the observer helper here is hard, better to let Observer handle LeadActivity creation if needed)
 
         return response()->json(['message' => 'Note added successfully', 'id' => $lead->id], 201);
@@ -286,12 +286,12 @@ class LeadController extends Controller
             'payload' => 'required|array',
             'form_id' => 'nullable|exists:forms,id',
             'source'  => 'nullable|string|max:50',
-            'temperature' => ['nullable','string', Rule::in(['cold', 'warm', 'hot'])],
+            'temperature' => ['nullable', 'string', Rule::in(['cold', 'warm', 'hot'])],
         ]);
 
         // Use create() for single leads to trigger Eloquent Events/Webhooks
         $lead = new Lead([
-            'tenant_id'   => $request->user()->tenant_id,
+            'tenant_id'   => $request->user()->current_tenant_id,
             'form_id'     => $validated['form_id'] ?? null,
             'source'      => $validated['source'] ?? 'undefined',
             'payload'     => $validated['payload'],
@@ -315,14 +315,14 @@ class LeadController extends Controller
      */
     private function performBulkInsert(array $leads, $status, $insertMethod, $temperature, $tenantId, $formId, $source, $activityType = "system_inserted")
     {
-        $batchSize = 100; 
+        $batchSize = 100;
         $chunks = array_chunk($leads, $batchSize);
         $total = 0;
         $now = now();
 
         foreach ($chunks as $chunk) {
             $leadsToInsert = [];
-            
+
             // 1. Prepare Lead Data
             foreach ($chunk as $leadPayload) {
                 $leadsToInsert[] = [
@@ -342,7 +342,7 @@ class LeadController extends Controller
             try {
                 // 2. Perform Bulk Insert for Leads
                 DB::table('leads')->insert($leadsToInsert);
-                
+
                 // 3. Retrieve the IDs of the leads we just inserted.
                 // We filter by tenant and the exact timestamp to get the correct IDs.
                 $insertedLeadIds = DB::table('leads')
@@ -351,10 +351,10 @@ class LeadController extends Controller
                     ->orderBy('id', 'desc')
                     ->limit(count($chunk))
                     ->pluck('id');
-                    
+
                 // 4. Prepare Activity Data
                 // $currentTokenString = request()->user()->loggedInFromString();
-                $activityNote = ucfirst(str_replace('_', ' ', $activityType)) ." a lead, using ".strtoupper($insertMethod)." upload.";
+                $activityNote = ucfirst(str_replace('_', ' ', $activityType)) . " a lead, using " . strtoupper($insertMethod) . " upload.";
                 $activitiesToInsert = [];
                 foreach ($insertedLeadIds as $leadId) {
                     $activitiesToInsert[] = [
@@ -374,12 +374,11 @@ class LeadController extends Controller
 
                 DB::commit();
                 $total += count($leadsToInsert);
-                
             } catch (\Exception $e) {
                 DB::rollBack();
                 // Log the error but continue or rethrow based on your agency's policy
                 Log::error("Batch Insert Failed: " . $e->getMessage());
-                throw $e; 
+                throw $e;
             }
         }
 
@@ -406,7 +405,7 @@ class LeadController extends Controller
         ]);
 
         $leadsData = $request->input('leads');
-        $tenantId  = $request->user()->tenant_id;
+        $tenantId  = $request->user()->current_tenant_id;
         $formId    = $request->form_id ?? null;
         $source    = $request->input('source', 'undefined');
         $temperature    = $request->input('temperature', 'cold');
@@ -427,17 +426,19 @@ class LeadController extends Controller
     {
         $this->authorize('create', Lead::class);
 
-        $request->validate(['file' => 'required|file|mimes:csv,txt',
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt',
             'from' => [
-                        'nullable',
-                        'string',
-                        Rule::in(['system_inserted', 'external_system_inserted'])
-                    ]]);
+                'nullable',
+                'string',
+                Rule::in(['system_inserted', 'external_system_inserted'])
+            ]
+        ]);
 
         $file   = $request->file('file');
         $handle = fopen($file->getPathname(), 'r');
         $header = fgetcsv($handle); // Consume and skip header row
-        
+
         if (!$header) {
             fclose($handle);
             return response()->json(['message' => 'Empty file'], 400);
@@ -455,7 +456,7 @@ class LeadController extends Controller
             $request->status ?? 'new',
             'csv',
             $request->temperature ?? 'cold',
-            $request->user()->tenant_id, 
+            $request->user()->current_tenant_id,
             $request->form_id ?? null,
             $request->source ?? 'undefined',
             $request->input('from', 'system_inserted')
@@ -470,8 +471,8 @@ class LeadController extends Controller
      * Uses StreamedResponse to handle millions of rows on 1.5GB RAM.
      */
 
-     public function export(Request $request)
-     {
+    public function export(Request $request)
+    {
         $this->authorize('viewAny', Lead::class);
 
         $request->validate([
@@ -479,69 +480,69 @@ class LeadController extends Controller
             'ids.*' => 'required|integer'
         ]);
 
-         $tenantId = $request->user()->tenant_id;
-         $selectedIds = $request->input('ids', []);
-     
-         // 1. DISCOVERY PHASE: Find all unique payload keys
-         // We use a separate query to get only the payloads to save RAM.
-         $query = Lead::where('tenant_id', $tenantId);
-         if (!empty($selectedIds)) {
-             $query->whereIn('id', $selectedIds);
-         }
-     
-         $allKeys = [];
-         // We use cursor to avoid loading thousands of objects into RAM
-         foreach ($query->select('payload')->cursor() as $lead) {
-             $keys = array_keys($lead->payload ?? []);
-             foreach ($keys as $key) {
-                 $allKeys[$key] = true; // Use keys as array keys to auto-handle duplicates
-             }
-         }
-         $dynamicHeaders = array_keys($allKeys);
-     
-         // 2. STREAMING PHASE
-         $fileName = 'leads_export_' . now()->format('Y-m-d_H-i') . '.csv';
-         $headers = [
+        $tenantId = $request->user()->current_tenant_id;
+        $selectedIds = $request->input('ids', []);
+
+        // 1. DISCOVERY PHASE: Find all unique payload keys
+        // We use a separate query to get only the payloads to save RAM.
+        $query = Lead::where('tenant_id', $tenantId);
+        if (!empty($selectedIds)) {
+            $query->whereIn('id', $selectedIds);
+        }
+
+        $allKeys = [];
+        // We use cursor to avoid loading thousands of objects into RAM
+        foreach ($query->select('payload')->cursor() as $lead) {
+            $keys = array_keys($lead->payload ?? []);
+            foreach ($keys as $key) {
+                $allKeys[$key] = true; // Use keys as array keys to auto-handle duplicates
+            }
+        }
+        $dynamicHeaders = array_keys($allKeys);
+
+        // 2. STREAMING PHASE
+        $fileName = 'leads_export_' . now()->format('Y-m-d_H-i') . '.csv';
+        $headers = [
             "Content-type"        => "text/csv",
             "Content-Disposition" => "attachment; filename=$fileName",
             "Pragma"              => "no-cache",
             "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
             "Expires"             => "0"
         ];
-     
-         return response()->stream(function() use ($tenantId, $selectedIds, $dynamicHeaders) {
-             $file = fopen('php://output', 'w');
-     
-             // Write the full header row
-             $mainHeaders = array_merge(['ID', 'Status', 'Temperature', 'Source'], $dynamicHeaders, ['Created At']);
-             fputcsv($file, $mainHeaders);
-     
-             // Fetch data again for the actual export
-             $exportQuery = Lead::where('tenant_id', $tenantId);
-             if (!empty($selectedIds)) {
-                 $exportQuery->whereIn('id', $selectedIds);
-             }
-     
-             foreach ($exportQuery->cursor() as $lead) {
-                 $row = [
-                     $lead->id,
-                     $lead->status,
-                     $lead->temperature,
-                     $lead->source,
-                 ];
-     
-                 // Map dynamic payload data to the correct column
-                 foreach ($dynamicHeaders as $header) {
-                     $row[] = $lead->payload[$header] ?? ''; // Leave empty if key doesn't exist for this lead
-                 }
-     
-                 $row[] = $lead->created_at->toDateTimeString();
-                 fputcsv($file, $row);
-             }
-     
-             fclose($file);
-         }, 200, $headers);
-     }
+
+        return response()->stream(function () use ($tenantId, $selectedIds, $dynamicHeaders) {
+            $file = fopen('php://output', 'w');
+
+            // Write the full header row
+            $mainHeaders = array_merge(['ID', 'Status', 'Temperature', 'Source'], $dynamicHeaders, ['Created At']);
+            fputcsv($file, $mainHeaders);
+
+            // Fetch data again for the actual export
+            $exportQuery = Lead::where('tenant_id', $tenantId);
+            if (!empty($selectedIds)) {
+                $exportQuery->whereIn('id', $selectedIds);
+            }
+
+            foreach ($exportQuery->cursor() as $lead) {
+                $row = [
+                    $lead->id,
+                    $lead->status,
+                    $lead->temperature,
+                    $lead->source,
+                ];
+
+                // Map dynamic payload data to the correct column
+                foreach ($dynamicHeaders as $header) {
+                    $row[] = $lead->payload[$header] ?? ''; // Leave empty if key doesn't exist for this lead
+                }
+
+                $row[] = $lead->created_at->toDateTimeString();
+                fputcsv($file, $row);
+            }
+
+            fclose($file);
+        }, 200, $headers);
+    }
 
     // public function import(Request $request)
     // {
@@ -556,7 +557,7 @@ class LeadController extends Controller
     //     $file = $request->file('file');
     //     $handle = fopen($file->getPathname(), 'r');
     //     $header = fgetcsv($handle);
-        
+
     //     $importedCount = 0;
 
     //     DB::beginTransaction();
@@ -569,11 +570,11 @@ class LeadController extends Controller
     //             if (count($row) !== count($header)) continue;
 
     //             $data = array_combine($header, $row);
-                
-                
+
+
 
     //             $lead = new Lead([
-    //                 'tenant_id' => $request->user()->tenant_id, 
+    //                 'tenant_id' => $request->user()->current_tenant_id,
     //                 'form_id' => $request->form_id ?? null,
     //                 'source' => 'csv',
     //                 'status' => 'new',
@@ -593,13 +594,13 @@ class LeadController extends Controller
     //             }
 
     //             $lead->save();
-                
+
     //             $importedCount++;
     //         }
-            
+
     //         DB::commit();
     //         fclose($handle);
-            
+
     //         return response()->json(['message' => "Successfully imported {$importedCount} leads."]);
 
     //     } catch (\Exception $e) {

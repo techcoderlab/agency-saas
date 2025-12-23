@@ -25,7 +25,7 @@ class Tenant extends Model
     {
         return $this->belongsToMany(Plan::class, 'plan_tenant');
     }
-    
+
     public function settings()
     {
         return $this->hasOne(TenantSetting::class);

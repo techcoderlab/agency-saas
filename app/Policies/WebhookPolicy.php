@@ -4,51 +4,47 @@ namespace App\Policies;
 
 use App\Models\Webhook;
 use App\Models\User;
+use App\Services\TenantManager;
 
 class WebhookPolicy
 {
-    private function checkGates(User $user, string $permission, string $tokenScope): bool
+    private function checkAccess(User $user, string $permission, string $scope): bool
     {
-        if (!in_array('webhooks', $user->tenant->enabled_modules ?? [])) {  // Super admin cant pass this check because it doesn't has tenant
-            return false;
-        }
+        if ($user->isSuperAdmin()) return true;
 
-        if (!$user->can($permission)) {
-            return false;
-        }
+        $tm = app(TenantManager::class);
 
-        if (!$user->tokenCan($tokenScope)) {
-            return false;
-        }
-
-        return true;
+        return !is_null($user->current_tenant_id)
+            && $tm->isModuleEnabled('webhooks')
+            && $user->can($permission)
+            && $user->tokenCan($scope);
     }
 
     public function viewAny(User $user): bool
     {
-        return $this->checkGates($user, 'view webhooks', 'webhooks:view');
+        return $this->checkAccess($user, 'view webhooks', 'webhooks:view');
     }
 
-    public function view(User $user, Webhook $wh): bool
+    public function view(User $user, Webhook $webhook): bool
     {
-        return $user->tenant_id === $wh->tenant_id
-            && $this->checkGates($user, 'view webhooks', 'webhooks:view');
+        return $user->current_tenant_id === $webhook->tenant_id
+            && $this->checkAccess($user, 'view webhooks', 'webhooks:view');
     }
 
     public function create(User $user): bool
     {
-        return $this->checkGates($user, 'write webhooks', 'webhooks:write');
+        return $this->checkAccess($user, 'write webhooks', 'webhooks:write');
     }
 
-    public function update(User $user, Webhook $wh): bool
+    public function update(User $user, Webhook $webhook): bool
     {
-        return $user->tenant_id === $wh->tenant_id
-            && $this->checkGates($user, 'update webhooks', 'webhooks:update');
+        return $user->current_tenant_id === $webhook->tenant_id
+            && $this->checkAccess($user, 'update webhooks', 'webhooks:update');
     }
 
-    public function delete(User $user, Webhook $wh): bool
+    public function delete(User $user, Webhook $webhook): bool
     {
-        return $user->tenant_id === $wh->tenant_id
-            && $this->checkGates($user, 'delete webhooks', 'webhooks:delete');
+        return $user->current_tenant_id === $webhook->tenant_id
+            && $this->checkAccess($user, 'delete webhooks', 'webhooks:delete');
     }
 }

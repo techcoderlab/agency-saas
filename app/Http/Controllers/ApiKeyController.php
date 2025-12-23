@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TenantManager;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -11,28 +12,41 @@ class ApiKeyController extends Controller
 {
     use AuthorizesRequests;
 
-    public function buildPermissionGroups(array $modules, array $allowedScopes): array
+    /**
+     * Helper to map raw scopes (e.g., "leads:view") to readable UI groups.
+     */
+    private function buildPermissionGroups(array $activeModules, array $allowedScopes): array
     {
-        // Predefined readable labels for CRUD actions
-        $actionLabels = config('modules.available_modules_permissions');
+        // We still use config for the *Descriptions* of actions (view/create/delete),
+        // but the *Modules* themselves come from the Database.
+        $actionLabels = [
+            'view'   => ['label' => 'View',   'desc' => 'Read access to :module'],
+            'write'  => ['label' => 'Create', 'desc' => 'Create new :module'],
+            'update' => ['label' => 'Edit',   'desc' => 'Update existing :module'],
+            'delete' => ['label' => 'Delete', 'desc' => 'Delete :module'],
+        ];
 
         $groups = [];
 
-        foreach ($modules as $module) {
-            $moduleId = $module['id'];
-            $moduleLabel = $module['label'];
+        foreach ($activeModules as $module) {
+            $moduleId = $module['slug'];
+            $moduleLabel = $module['name'];
 
-            // Filter scopes belonging to this module
+            // 1. Find all scopes that start with "leads:" (for example)
             $scopes = array_filter($allowedScopes, fn($s) => str_starts_with($s, $moduleId . ':'));
 
             $mappedScopes = [];
 
             foreach ($scopes as $scope) {
+                // e.g., "leads:view" -> $action = "view"
                 [$mod, $action] = explode(':', $scope);
+
                 if (!isset($actionLabels[$action])) continue;
 
-                $label = $actionLabels[$action]['label'];
-                $descModuleName = strtolower(preg_replace('/[^a-zA-Z0-9 ]/', '', $moduleLabel));
+                $label = $actionLabels[$action]['label']; // "View"
+
+                // Dynamic description: "Read access to leads"
+                $descModuleName = strtolower($moduleLabel);
                 $desc = str_replace(':module', $descModuleName, $actionLabels[$action]['desc']);
 
                 $mappedScopes[] = [
@@ -44,7 +58,7 @@ class ApiKeyController extends Controller
 
             if (!empty($mappedScopes)) {
                 $groups[] = [
-                    'name'   => $moduleLabel,
+                    'name'   => $moduleLabel, // e.g., "Leads Management" from DB
                     'scopes' => $mappedScopes,
                 ];
             }
@@ -58,20 +72,37 @@ class ApiKeyController extends Controller
      */
     public function index(Request $request)
     {
-        $this->authorize('api_keys.view');
+        // $this->authorize('viewAny', ApiKeyPolicy::class);
 
+        // 1. Get the Tenant from the Context (Singleton)
+        $tenantManager = app(TenantManager::class);
+        $tenant = $tenantManager->getTenant();
+
+        $activeModules = [];
+
+        // 2. Fetch Modules from the Database (Tenant -> Plan -> Modules)
+        if ($tenant && $tenant->plans->first()) {
+            // We map them to a standard array format for the builder
+            $activeModules = $tenant->plans->first()->modules
+                ->where('slug', '!=', 'api_keys') // Don't allow generating keys for the key manager itself
+                ->map(function ($module) {
+                    return [
+                        'slug' => $module->slug,
+                        'name' => $module->name ?? ucfirst($module->slug), // Fallback if name is missing
+                    ];
+                })->values()->toArray();
+        }
+
+        // 3. Return keys + dynamically built permission groups
         return response()->json([
             'keys' => $request->user()->tokens()
                 ->where('name', '!=', 'api')
-                // Added expires_at to selection
                 ->select('id', 'name', 'abilities', 'last_used_at', 'expires_at', 'created_at')
                 ->orderByDesc('created_at')
                 ->get(),
             'permission_groups' => $this->buildPermissionGroups(
-                array_filter(config('modules.available_modules'), function ($value) use ($request) {
-                    return $value['id'] !== 'api_keys' && in_array($value['id'], $request->user()->tenant->enabled_modules);
-                }),
-                config('sanctum.allowed_scopes'),
+                $activeModules,
+                config('sanctum.allowed_scopes', []), // The universe of valid scopes
             )
         ]);
     }
@@ -91,14 +122,14 @@ class ApiKeyController extends Controller
         ]);
 
         // Calculate Expiration
-        $expiresAt = $validated['expiration_days'] 
-            ? now()->addDays($validated['expiration_days']) 
+        $expiresAt = $validated['expiration_days']
+            ? now()->addDays($validated['expiration_days'])
             : null;
 
         // Create token with 3rd argument for expiration
         $token = $request->user()->createToken(
-            $validated['name'], 
-            $validated['abilities'], 
+            $validated['name'],
+            $validated['abilities'],
             $expiresAt
         );
 
@@ -139,8 +170,8 @@ class ApiKeyController extends Controller
         // If 'expiration_days' key exists in request (even if null), update it.
         // We calculate new expiry from NOW.
         if (array_key_exists('expiration_days', $validated)) {
-            $token->expires_at = $validated['expiration_days'] 
-                ? now()->addDays($validated['expiration_days']) 
+            $token->expires_at = $validated['expiration_days']
+                ? now()->addDays($validated['expiration_days'])
                 : null;
         }
 
@@ -173,8 +204,8 @@ class ApiKeyController extends Controller
 
         // 3. Create the NEW token
         $newToken = $request->user()->createToken(
-            $oldToken->name, 
-            $oldToken->abilities, 
+            $oldToken->name,
+            $oldToken->abilities,
             $newExpiresAt
         );
 

@@ -6,48 +6,32 @@ use App\Models\User;
 
 class UserPolicy
 {
-    private function checkGates(User $user, string $permission, string $tokenScope): bool
-    {
-        if (!in_array('users', $user->tenant->enabled_modules ?? [])) {  // Super admin cant pass this check because it doesn't has tenant
-            return false;
-        }
-
-        if (!$user->can($permission)) {
-            return false;
-        }
-
-        if (!$user->tokenCan($tokenScope)) {
-            return false;
-        }
-
-        return true;
-    }
-
     public function viewAny(User $user): bool
     {
-        return $this->checkGates($user, 'view users', 'users:view');
+        if ($user->isSuperAdmin()) return true;
+
+        return !is_null($user->current_tenant_id) && $user->can('manage users');
     }
 
     public function view(User $user, User $target): bool
     {
-        return $user->tenant_id === $target->tenant_id
-            && $this->checkGates($user, 'view users', 'users:view');
-    }
+        if ($user->isSuperAdmin()) return true;
 
-    public function create(User $user): bool
-    {
-        return $this->checkGates($user, 'write users', 'users:write');
+        return $user->current_tenant_id === $target->current_tenant_id && $user->can('manage users');
     }
 
     public function update(User $user, User $target): bool
     {
-        return $user->tenant_id === $target->tenant_id
-            && $this->checkGates($user, 'update users', 'users:update');
+        if ($user->isSuperAdmin()) return true;
+
+        return $user->current_tenant_id === $target->current_tenant_id && $user->can('manage users');
     }
 
     public function delete(User $user, User $target): bool
     {
-        return $user->tenant_id === $target->tenant_id
-            && $this->checkGates($user, 'delete users', 'users:delete');
+        if ($user->isSuperAdmin()) return true;
+        if ($user->id === $target->id) return false; // Prevent self-deletion
+
+        return $user->current_tenant_id === $target->current_tenant_id && $user->can('manage users');
     }
 }

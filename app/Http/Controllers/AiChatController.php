@@ -42,7 +42,7 @@ class AiChatController extends Controller
     {
         // Policy authorization check recommended here (e.g., $this->authorize('update', $aiChat))
         $this->authorize('update', $aiChat);
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'webhook_url' => 'required|url',
@@ -116,29 +116,29 @@ class AiChatController extends Controller
 
         try {
             $http = Http::timeout(3);
-    
+
             if ($aiChat->webhook_secret) {
                 $http->withHeaders(['Authorization' => $aiChat->webhook_secret]);
             }
-    
+
             $start = microtime(true);
-    
+
             // Universal non-triggering health check
             $response = $http->send('OPTIONS', $aiChat->webhook_url);
-    
+
             $latency = round((microtime(true) - $start) * 1000, 2);
-    
+
             $statusCode = $response->status();
 
             $isActive = in_array($statusCode, [200, 204]);
 
-    
+
             return response()->json([
                 'status' => $isActive ? 'active' : 'inactive',
                 'code' => $statusCode,
                 'latency_ms' => $latency,
             ]);
-    
+
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'inactive',
@@ -161,7 +161,7 @@ class AiChatController extends Controller
 
         $user = Auth::user();
         $url = $aiChat->webhook_url;
-        
+
         $sessionId = "user_{$user->id}_agent_{$aiChat->id}";
 
         // 1. ROBUST TEXT EXTRACTION
@@ -183,8 +183,8 @@ class AiChatController extends Controller
         Log::info('Final Extracted Text:', ['text' => $userText]);
 
         // 2. Handle File Storage
-        $n8nFiles = []; 
-        $dbFiles = []; 
+        $n8nFiles = [];
+        $dbFiles = [];
 
         if ($request->hasFile('files')) {
             // Force array to handle single/multiple files safely
@@ -195,12 +195,12 @@ class AiChatController extends Controller
 
             foreach ($uploadedFiles as $file) {
                 try {
-                    $tenantId = $user->tenant_id ?? 'default';
+                    $tenantId = $user->current_tenant_id ?? 'default';
                     $filename = \Illuminate\Support\Str::random(20) . '.' . $file->getClientOriginalExtension();
                     $folder = "tenants/{$tenantId}/chat_uploads/" . date('Y');
-                    
+
                     $path = $file->storeAs($folder, $filename, 'public');
-                    
+
                     if ($path) {
                         $fullUrl = asset('storage/' . $path);
                         $mime = $file->getMimeType();
@@ -251,7 +251,7 @@ class AiChatController extends Controller
 
         // 5. Save AI Response
         $responseData = $response->json();
-        
+
         $aiText = '';
         if (isset($responseData['output'])) $aiText = $responseData['output'];
         elseif (isset($responseData['text'])) $aiText = $responseData['text'];

@@ -16,7 +16,6 @@ const logout = async () => {
   router.push('/login')
 }
 
-// Compute navigation dynamically from bootstrap data
 const navigation = computed(() => {
   const baseNav = [
     {
@@ -25,12 +24,25 @@ const navigation = computed(() => {
       icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     },
   ]
-
-  // Combine static dashboard with dynamic modules from the plan
+  if (auth.userRoles?.includes('super_admin')) {
+    baseNav.push({
+      label: 'Tenants',
+      route: '/admin/tenants',
+      icon: 'M21 13.25V18a2 2 0 01-2 2H5a2 2 0 01-2-2v-4.75M7 10V4a1 1 0 011-1h8a1 1 0 011 1v6M3 10h18a2 2 0 012 2v1a2 2 0 01-2 2H3a2 2 0 01-2-2v-1a2 2 0 012-2z',
+    })
+  }
+  // Directly use moduleNav from the bootstrap payload
   return [...baseNav, ...auth.moduleNav]
 })
 
-// console.log(navigation.value)
+onMounted(async () => {
+  // If data is missing (e.g., direct page load), trigger bootstrap
+  if (!auth.user) {
+    await auth.bootstrap()
+  }
+})
+
+console.log(navigation.value)
 
 // const fetchModules = async () => {
 //   // Use existing cache logic
@@ -43,13 +55,6 @@ const navigation = computed(() => {
 //     //  console.log(mergedArray)
 //   }
 // }
-
-onMounted(async () => {
-  // If the user refreshed the page, re-run bootstrap
-  if (!auth.user) {
-    await auth.bootstrap()
-  }
-})
 </script>
 
 <template>

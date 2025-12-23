@@ -4,51 +4,46 @@ namespace App\Policies;
 
 use App\Models\AiChat;
 use App\Models\User;
+use App\Services\TenantManager;
 
 class AiChatPolicy
 {
-    private function checkGates(User $user, string $permission, string $tokenScope): bool
+    private function checkAccess(User $user, string $permission, string $scope): bool
     {
-        if (!in_array('ai_chats', $user->tenant->enabled_modules ?? [])) {  // Super admin cant pass this check because it doesn't has tenant
-            return false;
-        }
+        if ($user->isSuperAdmin()) return true;
 
-        if (!$user->can($permission)) {
-            return false;
-        }
+        $tm = app(TenantManager::class);
 
-        if (!$user->tokenCan($tokenScope)) {
-            return false;
-        }
-
-        return true;
+        return !is_null($user->current_tenant_id)
+            && $tm->isModuleEnabled('ai_chats')
+            && $user->can($permission)
+            && $user->tokenCan($scope);
     }
 
     public function viewAny(User $user): bool
     {
-        return $this->checkGates($user, 'view ai_chats', 'ai_chats:view');
+        return $this->checkAccess($user, 'view ai_chats', 'ai_chats:view');
     }
 
-    public function view(User $user, AiChat $chat): bool
+    public function view(User $user, AiChat $aiChat): bool
     {
-        return $user->tenant_id === $chat->tenant_id
-            && $this->checkGates($user, 'view ai_chats', 'ai_chats:view');
+        return $user->current_tenant_id === $aiChat->tenant_id
+            && $this->checkAccess($user, 'view ai_chats', 'ai_chats:view');
     }
 
     public function create(User $user): bool
     {
-        return $this->checkGates($user, 'write ai_chats', 'ai_chats:write');
+        return $this->checkAccess($user, 'write ai_chats', 'ai_chats:write');
     }
 
-    public function update(User $user, AiChat $chat): bool
+    public function update(User $user): bool
     {
-        return $user->tenant_id === $chat->tenant_id
-            && $this->checkGates($user, 'update ai_chats', 'ai_chats:update');
+        return $this->checkAccess($user, 'update ai_chats', 'ai_chats:update');
     }
 
-    public function delete(User $user, AiChat $chat): bool
+    public function delete(User $user, AiChat $aiChat): bool
     {
-        return $user->tenant_id === $chat->tenant_id
-            && $this->checkGates($user, 'delete ai_chats', 'ai_chats:delete');
+        return $user->current_tenant_id === $aiChat->tenant_id
+            && $this->checkAccess($user, 'delete ai_chats', 'ai_chats:delete');
     }
 }

@@ -154,7 +154,7 @@ class TenantController extends Controller
         ]);
 
         $settings = TenantSetting::firstOrCreate(
-            ['tenant_id' => $request->user()->tenant_id]
+            ['tenant_id' => $request->user()->current_tenant_id]
         );
 
         $settings->crm_config = $validated;
