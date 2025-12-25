@@ -76,7 +76,7 @@ class ApiKeyController extends Controller
 
         // 1. Get the Tenant from the Context (Singleton)
         $tenantManager = app(TenantManager::class);
-        $tenant = $tenantManager->getTenant();
+        $tenant = $tenantManager->getActiveTenant();
 
         $activeModules = [];
 

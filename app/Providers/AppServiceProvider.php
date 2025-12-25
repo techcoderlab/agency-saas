@@ -7,7 +7,7 @@ use App\Models\Lead;
 use App\Observers\LeadObserver;
 use Illuminate\Support\Facades\Gate;
 use App\Services\TenantManager;
-
+use Illuminate\Support\Facades\DB;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,23 +29,44 @@ class AppServiceProvider extends ServiceProvider
         Lead::observe(LeadObserver::class);
 
         // The "Landlord" Gate to prevent cross-tenant data access
-        Gate::define('access-tenant-resource', function ($user, $model) {
-            if ($user->isSuperAdmin()) {
-                return true;
-            }
-
-            $tenantManager = app(TenantManager::class);
-            if (!$tenantManager->getTenant()) {
-                return false;
-            }
-
-            // Check if the model uses the BelongsToTenant trait
-            if (in_array(\App\Traits\BelongsToTenant::class, class_uses_recursive($model))) {
-                return $model->tenant_id === $tenantManager->getTenant()->id;
-            }
-
-            return false; // Or true, depending on default behavior for non-tenant models
+        Gate::define('access-tenant', function ($user, $tenantId) {
+            // Prevent access if the user is not associated with this tenant
+            return DB::table('tenant_user')
+                ->where('user_id', $user->id)
+                ->where('tenant_id', $tenantId)
+                ->exists();
         });
+
+        // Global check for any model that uses BelongsToTenant
+        Gate::after(function ($user, $ability, $result, $arguments) {
+            if ($result === false) return false;
+
+            foreach ($arguments as $argument) {
+                if (is_object($argument) && isset($argument->tenant_id)) {
+                    if ($argument->tenant_id !== $user->current_tenant_id) {
+                        return false;
+                    }
+                }
+            }
+        });
+        
+        // Gate::define('access-tenant-resource', function ($user, $model) {
+        //     if ($user->isSuperAdmin()) {
+        //         return true;
+        //     }
+
+        //     $tenantManager = app(TenantManager::class);
+        //     if (!$tenantManager->getTenant()) {
+        //         return false;
+        //     }
+
+        //     // Check if the model uses the BelongsToTenant trait
+        //     if (in_array(\App\Traits\BelongsToTenant::class, class_uses_recursive($model))) {
+        //         return $model->tenant_id === $tenantManager->getTenant()->id;
+        //     }
+
+        //     return false; // Or true, depending on default behavior for non-tenant models
+        // });
 
         /* Gates to define permissioning for API Keys Module */
         $tenantManager = app(TenantManager::class);
@@ -53,15 +74,15 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('api_keys.view', function ($user) use ($tenantManager) {
             return $user->isNotSuperAdmin() && !$user->isTenantStaff() && $tenantManager->isModuleEnabled('api_keys') && $user->can('view api_keys');
         });
-    
+
         Gate::define('api_keys.write', function ($user) use ($tenantManager) {
             return $user->isNotSuperAdmin() && !$user->isTenantStaff()  && $tenantManager->isModuleEnabled('api_keys') && $user->can('write api_keys');
         });
-    
+
         Gate::define('api_keys.update', function ($user) use ($tenantManager) {
             return $user->isNotSuperAdmin() && !$user->isTenantStaff() && $tenantManager->isModuleEnabled('api_keys') && $user->can('update api_keys');
         });
-    
+
         Gate::define('api_keys.delete', function ($user) use ($tenantManager) {
             return $user->isNotSuperAdmin() && !$user->isTenantStaff() && $tenantManager->isModuleEnabled('api_keys') && $user->can('delete api_keys');
         });

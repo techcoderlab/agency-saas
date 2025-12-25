@@ -5,11 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
+use App\Services\TenantManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class TenantController extends Controller
 {
+    protected $tenantManager;
+
+    public function __construct(TenantManager $tenantManager)
+    {
+        $this->tenantManager = $tenantManager;
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -38,6 +46,7 @@ class TenantController extends Controller
             'domain' => ['nullable', 'string', 'max:255', 'unique:tenants,domain'],
             'status' => ['nullable', 'in:active,suspended'],
             'plan_id' => ['required', 'exists:plans,id'],
+            'expires_at' => ['nullable', 'date'],
 
             'crm_config' => ['nullable', 'array'],
             'crm_config.entity_name_singular' => ['required_with:crm_config', 'string'],
@@ -54,13 +63,18 @@ class TenantController extends Controller
             'status' => $validated['status'] ?? 'active',
         ]);
 
-        // Assign the plan
-        $tenant->plans()->sync([$validated['plan_id']]);
+        // 1. Update Pivot
+        // We use sync to ensure a tenant only has ONE active plan at a time (or attach for many)
+        // For this architecture, let's assume one active plan:
+        $tenant->plans()->sync([
+            $validated['plan_id'] => ['expires_at' => $validated['expires_at'] ?? null]
+        ]);
 
         if (isset($validated['crm_config'])) {
             TenantSetting::create([
                 'tenant_id' => $tenant->id,
                 'crm_config' => $validated['crm_config'],
+                'client_theme' => json_decode('{"primary":"#3490dc","secondary":"#ffed4a","font":"Arial, sans-serif"}'),
             ]);
         }
 
@@ -80,6 +94,8 @@ class TenantController extends Controller
             'domain' => ['sometimes', 'nullable', 'string', 'max:255', 'unique:tenants,domain,' . $tenant->id],
             'status' => ['sometimes', 'in:active,suspended'],
             'plan_id' => ['sometimes', 'exists:plans,id'],
+            'expires_at' => ['nullable', 'date'],
+
 
             'crm_config' => ['nullable', 'array'],
             'crm_config.entity_name_singular' => ['required_with:crm_config', 'string'],
@@ -93,7 +109,17 @@ class TenantController extends Controller
         $tenant->update($validated);
 
         if (isset($validated['plan_id'])) {
-            $tenant->plans()->sync([$validated['plan_id']]);
+
+            // 1. Update Pivot
+            // We use sync to ensure a tenant only has ONE active plan at a time (or attach for many)
+            // For this architecture, let's assume one active plan:
+            $tenant->plans()->sync([
+                $validated['plan_id'] => ['expires_at' => $validated['expires_at'] ?? null]
+            ]);
+
+            // 2. TRIGGER CACHE BUSTING
+            // This ensures the next request from this tenant gets the NEW module limits immediately.
+            $this->tenantManager->clearTenantCache($tenant->id);
         }
 
         if (isset($validated['crm_config'])) {
@@ -112,6 +138,14 @@ class TenantController extends Controller
 
         if (! $user || ! $user->isSuperAdmin()) {
             return response()->json(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        // 1. Safety Check: Prevent deletion if tenants are actively using this plan
+        // This prevents "orphaning" tenants or breaking their access via cascade deletes
+        if ($tenant->users()->exists()) {
+            return response()->json([
+                'message' => 'Cannot delete this tenant because it is currently assigned to clients. Please reassign them to a different tenant first or delete them entirely.'
+            ], 409); // 409 Conflict
         }
 
         $tenant->delete();

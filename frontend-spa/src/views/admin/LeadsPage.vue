@@ -34,6 +34,7 @@ const crmConfig = ref({
     { slug: 'closed', label: 'Closed', color: 'green' },
   ],
 })
+const searchFilters = ref([])
 
 // Stats
 const stats = ref({
@@ -149,7 +150,7 @@ const handleBulkAction = async (actionType) => {
       await bulkExport()
     } else if (actionType === 'delete') {
       // Future logic: await api.post('/leads/bulk-delete', { ids: selectedLeadIds.value });
-      console.log('Bulk delete triggered for:', selectedLeadIds.value)
+      // console.log('Bulk delete triggered for:', selectedLeadIds.value)
     } else if (actionType === 'status_update') {
       // Future logic: await api.post('/leads/bulk-update', { ids: selectedLeadIds.value, status: 'contacted' });
     }
@@ -215,51 +216,6 @@ const handleImport = async (event) => {
   }
 }
 
-// const fetchData = async () => {
-//     loading.value = true
-//     try {
-//         const statsRes = await api.get('/leads/stats')
-
-//         // Handle stats structure
-//         if (statsRes.data.stats) {
-//             stats.value = statsRes.data.stats
-//         } else {
-//             stats.value = statsRes.data
-//         }
-
-//         // Apply Backend Config
-//         if (statsRes.data.config) {
-//             crmConfig.value = statsRes.data.config
-//         }
-
-//         const params = { ...filters }
-//         Object.keys(params).forEach(key => {
-//             if (params[key] === '' || params[key] === 'all') delete params[key]
-//         })
-
-//         if (viewMode.value === 'board') params.per_page = 100
-
-//         const leadsRes = await api.get('/leads', { params })
-//         leads.value = leadsRes.data.data
-//         console.log(leads.value.length)
-//     } catch (e) {
-//         console.error(e)
-//     } finally {
-//         loading.value = false
-//     }
-// }
-
-// watch(viewMode, fetchData)
-// let searchTimer = null
-// watch(filters, (newVal, oldVal) => {
-//     if (newVal.search !== oldVal.search) {
-//         clearTimeout(searchTimer)
-//         searchTimer = setTimeout(fetchData, 500)
-//     } else {
-//         fetchData()
-//     }
-// }, { deep: true })
-
 const viewLead = (lead) => {
   activeLead.value = lead
   showLead.value = true
@@ -301,6 +257,10 @@ const fetchData = async (page = 1) => {
     const statsRes = await api.get('/leads/stats')
     stats.value = statsRes.data.stats || statsRes.data
     if (statsRes.data.config) crmConfig.value = statsRes.data.config
+    if (statsRes.data.stats.leads_search_filters) {
+      searchFilters.value = statsRes.data.stats.leads_search_filters
+      // console.log('Search Filters from API:', searchFilters.value.sources)
+    }
 
     const params = { ...filters, page } // Pass the page number
     Object.keys(params).forEach((key) => {
@@ -368,27 +328,27 @@ onMounted(() => fetchData(1))
 <template>
   <div class="space-y-6">
     <!-- <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+            <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg flex flex-col">
                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total {{ crmConfig.entity_name_plural }}</span>
                 <div class="flex items-baseline gap-2 mt-1">
                     <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.total }}</span>
                 </div>
             </div>
-            <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+            <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg flex flex-col">
                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">New Today</span>
                 <div class="flex items-baseline gap-2 mt-1">
                     <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.new_today }}</span>
                     <span v-if="stats.new_today > 0" class="text-xs font-medium text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full">Active</span>
                 </div>
             </div>
-             <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+             <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg flex flex-col">
                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hot {{ crmConfig.entity_name_plural }}</span>
                 <div class="flex items-baseline gap-2 mt-1">
                     <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.hot_leads }}</span>
                     <span class="text-xs text-slate-400">High Priority</span>
                 </div>
             </div>
-            <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+            <div class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg flex flex-col">
                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Conversion</span>
                 <div class="flex items-baseline gap-2 mt-1">
                     <span class="text-2xl font-bold text-slate-900 dark:text-white">{{ stats.conversion_rate }}</span>
@@ -413,7 +373,7 @@ onMounted(() => fetchData(1))
             title="List View"
             :class="[
               'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-              viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500',
+              viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-lg' : 'text-slate-500',
             ]"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -430,7 +390,7 @@ onMounted(() => fetchData(1))
             title="Kanban View"
             :class="[
               'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
-              viewMode === 'board' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500',
+              viewMode === 'board' ? 'bg-white dark:bg-slate-700 shadow-lg' : 'text-slate-500',
             ]"
           >
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -513,7 +473,7 @@ onMounted(() => fetchData(1))
     </div>
 
     <div
-      class="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
+      class="bg-white dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg space-y-4"
     >
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -560,9 +520,14 @@ onMounted(() => fetchData(1))
             class="block w-full py-1.5 px-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg dark:bg-slate-900 dark:text-slate-200"
           >
             <option value="all">All Temps</option>
-            <option value="cold">Cold</option>
-            <option value="warm">Warm</option>
-            <option value="hot">Hot</option>
+
+            <option
+              v-for="temperature in searchFilters.temperatures"
+              :key="temperature"
+              :value="temperature"
+            >
+              {{ temperature }}
+            </option>
           </select>
         </div>
         <div>
@@ -572,9 +537,9 @@ onMounted(() => fetchData(1))
             class="block w-full py-1.5 px-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg dark:bg-slate-900 dark:text-slate-200"
           >
             <option value="all">All Sources</option>
-            <!-- <option value="form">Form Submission</option>
-                        <option value="csv_import">CSV Import</option>
-                        <option value="manual">Manual Entry</option> -->
+            <option v-for="source in searchFilters.sources" :key="source" :value="source">
+              {{ source }}
+            </option>
           </select>
         </div>
         <div>
@@ -630,7 +595,7 @@ onMounted(() => fetchData(1))
         <div
           v-for="status in crmConfig.statuses"
           :key="status.slug"
-          class="min-w-[300px] w-full bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col"
+          class="min-w-[300px] w-full bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col shadow-lg"
         >
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-slate-700 dark:text-slate-200">{{ status.label }}</h3>
@@ -758,107 +723,102 @@ onMounted(() => fetchData(1))
       >
         <button
           @click="loadMore"
-          class="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-sm text-sm font-medium hover:bg-slate-50"
+          class="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-lg text-sm font-medium hover:bg-slate-50"
         >
           {{ loading ? 'Loading...' : 'Load More ' + crmConfig.entity_name_plural }}
         </button>
       </div>
     </div>
 
-    <div
-      v-else
-      class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden"
-    >
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead class="bg-slate-50 dark:bg-slate-900/50">
-            <tr>
-              <th class="px-6 py-4"></th>
-              <th class="px-6 py-4">ID</th>
-              <th class="px-6 py-4">{{ crmConfig.entity_name_singular }}</th>
-              <th class="px-6 py-4">Status</th>
-              <th class="px-6 py-4">Temp</th>
-              <th class="px-6 py-4">Date</th>
-              <th class="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-            <tr
-              v-for="lead in leads"
-              :key="lead.id"
-              :class="isLeadSelected(lead.id) ? 'bg-indigo-50/30' : ''"
-            >
-              <td class="px-6 py-4">
-                <button
-                  @click="toggleLeadSelection(lead.id)"
-                  :class="isLeadSelected(lead.id) ? 'text-indigo-600' : 'text-slate-300'"
+    <div v-else class="table-container pb-4 overflow-x-auto overflow-y-scroll custom-scrollbar">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="px-6 py-4"></th>
+            <th class="px-6 py-4">ID</th>
+            <th class="px-6 py-4">{{ crmConfig.entity_name_singular }}</th>
+            <th class="px-6 py-4">Status</th>
+            <th class="px-6 py-4">Temp</th>
+            <th class="px-6 py-4">Date</th>
+            <th class="px-6 py-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="lead in leads"
+            :key="lead.id"
+            :class="isLeadSelected(lead.id) ? 'bg-indigo-50/30' : ''"
+          >
+            <td class="px-6 py-4">
+              <button
+                @click="toggleLeadSelection(lead.id)"
+                :class="isLeadSelected(lead.id) ? 'text-indigo-600' : 'text-slate-300'"
+              >
+                <svg
+                  v-if="isLeadSelected(lead.id)"
+                  class="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
                 >
-                  <svg
-                    v-if="isLeadSelected(lead.id)"
-                    class="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                  <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <circle cx="12" cy="12" r="10" stroke-width="2" />
-                  </svg>
-                </button>
-              </td>
-              <td class="px-6 py-4 font-mono text-xs">{{ lead.id }}</td>
-              <td class="px-6 py-4">
-                <p>{{ 'From ' + lead.source || 'Undefined' }}</p>
-                <button @click="viewLead(lead)" class="mt-1 text-blue-400">View Information</button>
-              </td>
-              <td class="px-6 py-4">
-                <span
-                  class="px-2 py-1 rounded-full text-xs border"
-                  :class="getStatusColor(lead.status)"
-                >
-                  {{ crmConfig.statuses.find((s) => s.slug === lead.status)?.label || lead.status }}
-                </span>
-              </td>
-              <td class="px-6 py-4">
-                <span :class="getTempColor(lead.temperature)">● {{ lead.temperature }}</span>
-              </td>
-              <td class="px-6 py-4">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
-              <td class="px-6 py-4 text-right">
-                <button @click="openLead(lead)" class="ml-3 text-blue-400 hover:underline">
-                  Open
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" stroke-width="2" />
+                </svg>
+              </button>
+            </td>
+            <td class="px-6 py-4 font-mono text-xs">{{ lead.id }}</td>
+            <td class="px-6 py-4">
+              <p>{{ 'From ' + lead.source || 'Undefined' }}</p>
+              <button @click="viewLead(lead)" class="mt-1 text-blue-400">View Information</button>
+            </td>
+            <td class="px-6 py-4">
+              <span
+                class="px-2 py-1 rounded-full text-xs border"
+                :class="getStatusColor(lead.status)"
+              >
+                {{ crmConfig.statuses.find((s) => s.slug === lead.status)?.label || lead.status }}
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <span :class="getTempColor(lead.temperature)">● {{ lead.temperature }}</span>
+            </td>
+            <td class="px-6 py-4">{{ new Date(lead.created_at).toLocaleDateString() }}</td>
+            <td class="px-6 py-4 text-right">
+              <button @click="openLead(lead)" class="ml-3 text-blue-400 hover:underline">
+                Open
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <div
-          v-if="viewMode === 'list'"
-          class="px-6 py-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-800"
-        >
-          <span class="text-sm text-slate-500">
-            Showing {{ leads.length }} of {{ pagination.total }} {{ crmConfig.entity_name_plural }}
-          </span>
-          <div class="flex gap-2">
-            <button
-              @click="fetchData(pagination.current_page - 1)"
-              :disabled="pagination.current_page === 1"
-              class="px-3 py-1 border rounded disabled:opacity-50 dark:border-slate-700 dark:text-white"
-            >
-              Prev
-            </button>
-            <button
-              @click="fetchData(pagination.current_page + 1)"
-              :disabled="pagination.current_page === pagination.last_page"
-              class="px-3 py-1 border rounded disabled:opacity-50 dark:border-slate-700 dark:text-white"
-            >
-              Next
-            </button>
-          </div>
+      <div
+        v-if="viewMode === 'list'"
+        class="px-6 py-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-800"
+      >
+        <span class="text-sm text-slate-500">
+          Showing {{ leads.length }} of {{ pagination.total }} {{ crmConfig.entity_name_plural }}
+        </span>
+        <div class="flex gap-2">
+          <button
+            @click="fetchData(pagination.current_page - 1)"
+            :disabled="pagination.current_page === 1"
+            class="px-3 py-1 border rounded disabled:opacity-50 dark:border-slate-700 dark:text-white"
+          >
+            Prev
+          </button>
+          <button
+            @click="fetchData(pagination.current_page + 1)"
+            :disabled="pagination.current_page === pagination.last_page"
+            class="px-3 py-1 border rounded disabled:opacity-50 dark:border-slate-700 dark:text-white"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -878,7 +838,7 @@ onMounted(() => fetchData(1))
           class="relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] transform transition-all"
         >
           <div
-            class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800"
+            class="flex items-center justify-between px-6 py-4 border-b border-slate-300/60 dark:border-slate-800 rounded-t-xl"
           >
             <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
               {{ crmConfig.entity_name_singular }} Details
@@ -905,7 +865,7 @@ onMounted(() => fetchData(1))
           <div class="overflow-y-auto p-6">
             <div v-if="activeLead" class="space-y-6">
               <div
-                class="grid grid-cols-2 gap-4 rounded-lg bg-slate-50 dark:bg-slate-900 p-4 border border-slate-100 dark:border-slate-800"
+                class="grid grid-cols-2 gap-4 rounded-lg bg-slate-50 dark:bg-slate-900 py-2 px-4 border border-slate-300/60 dark:border-slate-800"
               >
                 <div>
                   <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider"
@@ -933,7 +893,7 @@ onMounted(() => fetchData(1))
                   <div
                     v-for="(value, key) in activeLead.payload"
                     :key="key"
-                    class="group rounded-lg border border-slate-200 dark:border-slate-800 p-3 hover:border-primary/50 transition-colors"
+                    class="group rounded-lg border border-slate-200 dark:border-slate-800 py-2 px-4 hover:border-primary/50 transition-colors"
                   >
                     <dt class="text-xs font-medium text-slate-500 uppercase mb-1.5">{{ key }}</dt>
                     <dd
@@ -946,12 +906,10 @@ onMounted(() => fetchData(1))
               </div>
             </div>
           </div>
-          <div
-            class="border-t border-slate-100 dark:border-slate-800 px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-xl"
-          >
+          <div class="border-t border-slate-300/60 dark:border-slate-800 px-6 py-4 rounded-b-xl">
             <button
               @click="closeLead"
-              class="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-300 dark:border-slate-700 shadow-sm text-sm font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              class="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-300 dark:border-slate-700 btn-secondary"
             >
               Close
             </button>

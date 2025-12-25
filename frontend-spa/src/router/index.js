@@ -12,6 +12,9 @@ import WebhooksPage from '../views/admin/WebhooksPage.vue'
 import ApiKeysPage from '../views/admin/ApiKeysPage.vue'
 import AiChatIndexPage from '../views/admin/ai-chat/AiChatIndex.vue'
 import AiChatRoomPage from '../views/admin/ai-chat/AiChatRoom.vue'
+import SuperAdminPlansAndModules from '../views/admin/PlansManager.vue'
+
+import DashboardWrapper from '@/views/DashboardWrapper.vue' // Import the wrapper
 
 // Auth/Public Views
 import LoginPage from '../views/auth/LoginPage.vue'
@@ -33,7 +36,7 @@ const router = createRouter({
         {
           path: '',
           name: 'dashboard',
-          component: AgencyDashboard,
+          component: DashboardWrapper, // Use the wrapper here!
         },
         {
           path: 'leads',
@@ -69,12 +72,6 @@ const router = createRouter({
           meta: { module: 'ai_chats' },
         },
         {
-          path: 'tenants',
-          name: 'superadmin-tenants',
-          component: SuperAdminTenants,
-          meta: { role: 'super_admin' },
-        },
-        {
           path: 'webhooks',
           name: 'webhooks',
           component: WebhooksPage,
@@ -85,6 +82,19 @@ const router = createRouter({
           name: 'api-keys',
           component: ApiKeysPage,
           meta: { module: 'api_keys' },
+        },
+
+        {
+          path: 'tenants',
+          name: 'superadmin-tenants',
+          component: SuperAdminTenants,
+          meta: { role: 'super_admin' },
+        },
+        {
+          path: 'plans-and-modules',
+          name: 'superadmin-plans-and-modules',
+          component: SuperAdminPlansAndModules,
+          meta: { role: 'super_admin' },
         },
       ],
     },

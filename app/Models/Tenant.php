@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Tenant extends Model
 {
@@ -14,16 +15,31 @@ class Tenant extends Model
         'name',
         'domain',
         'status',
+        'slug',
+        'is_active'
     ];
 
-    public function users()
+    // public function users()
+    // {
+    //     return $this->belongsToMany(User::class, 'tenant_user')->withPivot('role', 'is_primary');
+    // }
+
+    // public function plans()
+    // {
+    //     return $this->belongsToMany(Plan::class, 'plan_tenant');
+    // }
+
+    public function plans(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'tenant_user')->withPivot('role', 'is_primary');
+        return $this->belongsToMany(Plan::class, 'plan_tenant')
+            ->withPivot('expires_at')
+            ->withTimestamps();
     }
 
-    public function plans()
+    public function users(): BelongsToMany
     {
-        return $this->belongsToMany(Plan::class, 'plan_tenant');
+        return $this->belongsToMany(User::class, 'tenant_user')
+            ->withPivot('role', 'is_primary');
     }
 
     public function settings()
@@ -31,5 +47,3 @@ class Tenant extends Model
         return $this->hasOne(TenantSetting::class);
     }
 }
-
-

@@ -13,11 +13,11 @@ class Plan extends Model
 
     public function modules()
     {
-        return $this->belongsToMany(Module::class, 'module_plan');
+        return $this->belongsToMany(Module::class, 'module_plan')->withPivot('limit');
     }
 
     public function tenants()
     {
-        return $this->belongsToMany(Tenant::class, 'plan_tenant');
+        return $this->belongsToMany(Tenant::class, 'plan_tenant')->withPivot('expires_at')->withTimestamps();
     }
 }

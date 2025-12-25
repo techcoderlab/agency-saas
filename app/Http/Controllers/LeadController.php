@@ -53,7 +53,7 @@ class LeadController extends Controller
         // every time the client refreshes the page.
         $cacheKey = "dashboard_stats_{$tenantId}";
 
-        $data = Cache::remember($cacheKey, 300, function () use ($tenantId) {
+        $data = Cache::remember($cacheKey, 500, function () use ($tenantId) {
 
             $now = now();
             $startOfMonth = $now->copy()->startOfMonth();
@@ -96,9 +96,9 @@ class LeadController extends Controller
             $topSources = Lead::where('tenant_id', $tenantId)
                 ->select('source', DB::raw('count(*) as count'))
                 ->groupBy('source')
-                ->orderByDesc('count')
-                ->limit(4)
-                ->get();
+                ->orderByDesc('count');
+            // ->limit(4)
+            // ->get();
 
             // 4. CALCULATIONS
             $conversionRate = $aggregates->total > 0
@@ -127,7 +127,12 @@ class LeadController extends Controller
                     'percentage' => round($growth, 1)
                 ],
                 'chart_data' => $chartData, // Array for Chart.js or ApexCharts
-                'top_sources' => $topSources
+                'top_sources' => $topSources->limit(4)->get(),
+                'leads_search_filters' => [
+                    // 'statuses' => Lead::where('tenant_id', $tenantId)->select('status')->distinct()->pluck('status'),
+                    'temperatures' => ['cold', 'warm', 'hot'],
+                    'sources' => $topSources->pluck('source'),
+                ]
             ];
         });
 
