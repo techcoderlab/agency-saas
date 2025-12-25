@@ -49,7 +49,7 @@ class TenantManager
      */
     public function isModuleEnabled(string $moduleSlug): bool
     {
-        // FIX: Call getTenant() to ensure it is loaded
+        // FIX: Call getActiveTenant() to ensure it is loaded
         $tenant = $this->getActiveTenant();
 
         if (!$tenant) {

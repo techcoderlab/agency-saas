@@ -26,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.module' => CheckTenantModule::class,
             'check.status' => CheckTenantStatus::class,
             'check.tenant_access' => EnsureUserHasTenantAccess::class,
+
+            'plan.expiry' => \App\Http\Middleware\CheckPlanExpiry::class,
+            'log.api' => \App\Http\Middleware\LogApiActivity::class,
+
+
             // Ensure Spatie middleware is aliased if you use it directly in routes
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,

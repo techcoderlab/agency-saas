@@ -7,7 +7,10 @@ use App\Models\Lead;
 use App\Observers\LeadObserver;
 use Illuminate\Support\Facades\Gate;
 use App\Services\TenantManager;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +30,24 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Lead::observe(LeadObserver::class);
+
+        // Define a rate limiter specifically for Tenant APIs
+        RateLimiter::for('tenant_api', function (Request $request) {
+            // Use X-Tenant-Id header, falling back to IP if missing (though Tenant ID should be mandatory)
+            $tenantId = $request->header('X-Tenant-Id') ?: $request->user()?->tenant_id;
+            $key = $tenantId ?? $request->ip();
+
+            $responseString = [
+                'message' => 'Too many requests. Please slow down your API calls.',
+                'status' => 429
+            ];
+            // Limit: 60 requests per minute per tenant
+            return [Limit::perSecond(10)->by($key)->response(function () use ($responseString) {
+                return response()->json($responseString, 429);
+            }), Limit::perMinute(60)->by($key)->response(function () use ($responseString) {
+                return response()->json($responseString, 429);
+            })];
+        });
 
         // The "Landlord" Gate to prevent cross-tenant data access
         Gate::define('access-tenant', function ($user, $tenantId) {
@@ -49,7 +70,7 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
         });
-        
+
         // Gate::define('access-tenant-resource', function ($user, $model) {
         //     if ($user->isSuperAdmin()) {
         //         return true;

@@ -32,7 +32,7 @@ class Tenant extends Model
     public function plans(): BelongsToMany
     {
         return $this->belongsToMany(Plan::class, 'plan_tenant')
-            ->withPivot('expires_at')
+            ->withPivot('expires_at', 'grace_period_days')
             ->withTimestamps();
     }
 
